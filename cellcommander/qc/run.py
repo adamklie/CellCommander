@@ -9,9 +9,11 @@ from datetime import datetime
 from typing import Dict, Optional, Tuple, Union
 
 import matplotlib
+import muon as mu
 import pandas as pd
 import psutil
 import scanpy as sc
+from mudata import MuData
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # This needs to be after matplotlib.use('Agg')
@@ -22,7 +24,10 @@ sc.settings.set_figure_params(
     facecolor="white",
     frameon=False,
 )
-from cellcommander.qc.rna import rna_qc_triplet_plot, rna_qc, rna_outlier_filter
+from cellcommander.qc import consts
+from cellcommander.qc.atac import atac_outlier_filter, atac_qc, atac_qc_triplet_plot
+from cellcommander.qc.rna import rna_outlier_filter, rna_qc, rna_qc_triplet_plot
+from cellcommander.qc.utils import sample_level_metrics
 
 logger = logging.getLogger("cellcommander")
 
@@ -42,10 +47,38 @@ def run_qc(args: argparse.Namespace):
     logger.info("Running qc command")
 
     try:
-        # Read in single h5 file
-        logger.info(f"Reading h5 file from {args.input_file}")
-        adata = sc.read_10x_h5(args.input_file)
-        adata.var_names_make_unique()
+        # Read in the data
+        if args.mode == "rna":
+            # Read in single h5 file
+            logger.info(f"Reading h5 file from {args.input_file}")
+            adata = sc.read_10x_h5(args.input_file)
+            adata.var_names_make_unique()
+
+            # Sample level metrics
+            metrics = ["n_genes_by_counts", "total_counts", "pct_counts_mt"]
+
+        elif args.mode == "atac":
+            # Read in single h5 files
+            data = mu.read_10x_h5(args.input_file)
+            data.var_names_make_unique()
+
+            # Grab the ATAC only
+            if isinstance(data, MuData) and "atac" in data.mod:
+                adata = data.mod["atac"]
+            else:
+                adata = data
+
+            # Keep only features that are Peaks, just in case
+            adata[:, adata.var["feature_types"] == "Peaks"]
+
+            # Sample level metrics
+            metrics = [
+                "frip",
+                "pct_counts_mt",
+                "nucleosome_signal",
+                "tss_score",
+                "total_counts",
+            ]
 
         # Read metadata file if provided
         if args.metadata_file is not None:
@@ -59,12 +92,12 @@ def run_qc(args: argparse.Namespace):
                 c + "_" + args.metadata_source for c in metadata.columns
             ]
             adata.obs = adata.obs.merge(metadata, left_index=True, right_index=True)
-
+    
         # Run QC
         if args.mode == "rna":
             # Log mode
             logger.info("Running in rna mode")
-            
+
             # Calculate and store qc metrics in adata.obs
             logger.info("Calculating QC metrics and storing in adata.obs")
             rna_qc(
@@ -74,16 +107,14 @@ def run_qc(args: argparse.Namespace):
                 n_genes_by_counts_nmads=args.n_features_by_counts_nmads,
                 pct_counts_in_top_genes_nmads=args.pct_counts_in_top_features_nmads,
                 pct_counts_mt_nmads=args.pct_counts_mt_nmads,
-                pct_counts_mt_threshold=args.pct_counts_mt_threshold,
-                n_genes_high_threshold=args.n_features_high_threshold,
-                n_genes_low_threshold=args.n_features_low_threshold,
+                pct_counts_mt_hi=args.pct_counts_mt_hi,
+                n_genes_hi=args.n_features_hi,
+                n_genes_low=args.n_features_low,
             )
 
             # Pre filtering plots of QC metrics
             logger.info("Generating pre-filtering QC plots")
-            rna_qc_triplet_plot(
-                adata, args.output_dir, "pre", total_counts_bins=100
-            )
+            rna_qc_triplet_plot(adata, args.output_dir, "pre", total_counts_bins=100)
 
             if not args.no_filter:
                 # Log strategy and based on outlier definition in adata.obs, filter cells
@@ -97,7 +128,9 @@ def run_qc(args: argparse.Namespace):
                 logger.info(
                     f"Saving filtered barcodes to {os.path.join(args.output_dir, 'filtered_barcodes.txt')}"
                 )
-                filtered_bc_path = os.path.join(args.output_dir, "filtered_barcodes.txt")
+                filtered_bc_path = os.path.join(
+                    args.output_dir, "filtered_barcodes.txt"
+                )
                 filtered_bc.to_series().to_csv(
                     filtered_bc_path, sep="\t", index=False, header=False
                 )
@@ -107,21 +140,98 @@ def run_qc(args: argparse.Namespace):
                 rna_qc_triplet_plot(
                     adata, args.output_dir, "post", total_counts_bins=100
                 )
-            
+
         elif args.mode == "atac":
-            raise NotImplementedError("ATAC-seq QC not yet implemented yet")
+            # Log mode
+            logger.info("Running in atac mode")
+
+            # If metadata source is cellranger, we can add some additional metrics
+            if args.metadata_source == "cellranger":
+                adata.obs["frip"] = adata.obs["atac_peak_region_fragments_cellranger"]/adata.obs["atac_fragments_cellranger"]
+                adata.obs["pct_counts_mt"] = (adata.obs["atac_mitochondrial_reads_cellranger"]/adata.obs["atac_raw_reads_cellranger"])
+
+            # Calculate and store qc metrics in adata.obs
+            logger.info("Calculating QC metrics and storing in adata.obs")
+            if args.atac_qc_tool == "muon":
+                atac_qc(
+                    adata=adata,
+                    n_top_features=args.n_top_features,
+                    pct_counts_in_top_features_nmads=args.pct_counts_in_top_features_nmads,
+                    n_for_ns_calc=args.n_for_ns_calc,
+                    ns_nmads=args.ns_nmads,
+                    ns_hi=args.ns_hi,
+                    n_tss=args.n_tss,
+                    tss_annot=None,
+                    tss_nmads=args.tss_nmads,
+                    tss_hi=args.tss_hi,
+                    tss_low=args.tss_low,
+                    total_counts_nmads=args.total_counts_nmads,
+                    total_counts_low=args.total_counts_low,
+                    total_counts_hi=args.total_counts_hi,
+                    n_features_nmads=args.n_features_nmads,
+                    n_features_low=args.n_features_low,
+                    random_state=args.random_state,
+                )
+
+            # Pre filtering plots of QC metrics
+            logger.info("Generating pre-filtering QC plots")
+            atac_qc_triplet_plot(
+                adata=adata,
+                outdir_path=args.output_dir,
+                output_prefix="pre",
+                total_counts_bins=100,
+                total_counts_low=args.total_counts_low,
+                total_counts_hi=args.total_counts_hi,
+                tss_low=args.tss_low,
+                tss_hi=args.tss_hi,
+            )
+
+            if not args.no_filter:
+                # Log strategy and based on outlier definition in adata.obs, filter cells
+                logger.info(f"Filtering using strategy: `{args.filtering_strategy}`")
+                adata, filtered_bc = atac_outlier_filter(
+                    adata,
+                    outlier_cols=["outlier", "mt_outlier"],
+                )
+
+                # Save the barcodes of filtered cells to output directory
+                logger.info(
+                    f"Saving filtered barcodes to {os.path.join(args.output_dir, 'filtered_barcodes.txt')}"
+                )
+                filtered_bc_path = os.path.join(
+                    args.output_dir, "filtered_barcodes.txt"
+                )
+                filtered_bc.to_series().to_csv(
+                    filtered_bc_path, sep="\t", index=False, header=False
+                )
+
+                # Plot QC metrics after filtering
+                logger.info("Generating post-filtering QC plots")
+                atac_qc_triplet_plot(
+                    adata, args.output_dir, "post", total_counts_bins=100
+                )
 
         # Optionally filter genes if min_cells is provided as arg
-        if args.min_cells is not None:
-            logger.info(f"Filtering genes based on cell count. Number of genes before filtering: {adata.n_vars}")
-            sc.pp.filter_genes(adata, min_cells=args.min_cells)
+        if args.min_cells_per_feature is not None:
+            logger.info(
+                f"Filtering genes based on cell count. Number of genes before filtering: {adata.n_vars}"
+            )
+            sc.pp.filter_genes(adata, min_cells=args.min_cells_per_feature)
             logger.info(f"Number of genes after filtering: {adata.n_vars}")
 
-         # Save the filtered adata
+        # Save the filtered adata
         logger.info(
             f"Saving filtered adata to {os.path.join(args.output_dir, f'{args.output_prefix}.h5ad')}"
         )
         adata.write(os.path.join(args.output_dir, f"{args.output_prefix}.h5ad"))
+
+        # Sample level metrics dict
+        sample_metrics = sample_level_metrics(adata, metrics)
+        sample_metrics_df = pd.DataFrame.from_dict(sample_metrics, orient="index")
+        sample_metrics_df.columns = ["median"]
+        sample_metrics_df.to_csv(
+            os.path.join(args.output_dir, "sample_metrics.tsv"), sep="\t"
+        )
 
         # Log the end time
         logger.info("Completed qc")

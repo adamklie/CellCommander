@@ -30,17 +30,8 @@ class CLI(AbstractCLI):
             args.input_file = os.path.expanduser(args.input_file)
             args.output_dir = os.path.expanduser(args.output_dir)
             args.metadata_file = os.path.expanduser(args.metadata_file)
-            if args.truth_file is not None:
-                args.truth_file = os.path.expanduser(args.truth_file)
         except TypeError:
             raise ValueError("Problem with provided input and output paths.")
-
-        # Ensure that if truth data is specified, it is accessible
-        if args.truth_file is not None:
-            assert os.access(args.truth_file, os.R_OK), (
-                f"Cannot read specified simulated truth file {args.truth_file}. "
-                f"Ensure the file exists and is read accessible."
-            )
 
         # Ensure write access to the save directory.
         if not os.path.exists(args.output_dir):
@@ -50,6 +41,24 @@ class CLI(AbstractCLI):
                 f"Cannot write to specified output directory {args.output_dir}. "
                 f"Ensure the directory exists and is write accessible."
             )
+        # If filtering_strategy is "mad", make all thresholds None
+        if args.filtering_strategy == "mad":
+            args.n_features_low = None
+            args.n_features_hi = None
+            args.total_counts_low = None
+            args.total_counts_hi = None
+            args.ns_hi = None
+            args.tss_low = None
+            args.tss_hi = None
+
+        # Do the opposite for nmads if the strategy is "threshold"
+        elif args.filtering_strategy == "threshold":
+            args.total_counts_nmads = None
+            args.n_features_by_counts_nmads = None
+            args.pct_counts_in_top_features_nmads = None
+            args.pct_counts_mt_nmads = None
+            args.ns_nmads = None
+            args.tss_nmads = None
 
         # Validate numerical arguments that should have logical minimums
         if args.total_counts_nmads is not None:
@@ -78,34 +87,31 @@ class CLI(AbstractCLI):
             ), "--pct_counts_mt_nmads must be a positive number."
 
         # Validate that percentage values are within a logical range
-        if args.pct_counts_mt_threshold is not None:
+        if args.pct_counts_mt_hi is not None:
             assert (
-                0 <= args.pct_counts_mt_threshold <= 100
-            ), "--pct_counts_mt_threshold must be a percentage between 0 and 100."
+                0 <= args.pct_counts_mt_hi <= 100
+            ), "--pct_counts_mt_hi must be a percentage between 0 and 100."
 
-        # Validate that n_features_low_threshold and n_features_high_threshold are logical
-        if (
-            args.n_features_low_threshold is not None
-            and args.n_features_high_threshold is not None
-        ):
+        # Validate that n_features_low and n_features_hi are logical
+        if args.n_features_low is not None and args.n_features_hi is not None:
             assert (
-                args.n_features_low_threshold < args.n_features_high_threshold
-            ), "--n_features_low_threshold should be less than --n_features_high_threshold."
+                args.n_features_low < args.n_features_hi
+            ), "--n_features_low should be less than --n_features_hi."
             assert (
-                args.n_features_low_threshold > 0
-            ), "--n_features_low_threshold must be a positive integer."
-            assert (
-                args.n_features_high_threshold > 0
-            ), "--n_features_high_threshold must be a positive integer."
+                args.n_features_low > 0
+            ), "--n_features_low must be a positive integer."
+            assert args.n_features_hi > 0, "--n_features_hi must be a positive integer."
 
-        # Validate that min_cells is logical
-        if args.min_cells is not None:
-            assert args.min_cells > 0, "--min_cells must be an integer greater than 0."
+        # Validate that min_cells_per_feature is logical
+        if args.min_cells_per_feature is not None:
+            assert (
+                args.min_cells_per_feature > 0
+            ), "--min_cells_per_feature must be an integer greater than 0."
 
         # Make sure n_threads makes sense.
         if args.n_threads is not None:
             assert args.n_threads > 0, "--cpu-threads must be an integer >= 1"
-        
+
         # Return the validated arguments.
         return args
 
@@ -144,7 +150,6 @@ def setup_and_logging(args):
             [
                 "output_dir",
                 "debug",
-                "truth_file",
                 "cpu_threads",
             ]
         ),

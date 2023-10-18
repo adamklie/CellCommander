@@ -4,27 +4,27 @@ Parses arguments and determines which tool should be called.
 
 """
 
-import sys
-import os
 import argparse
+import codecs
+import importlib
+import os
+import sys
 from abc import ABC, abstractmethod
 from typing import Dict
-import importlib
-import codecs
 
 # New tools should be added to this list.
-TOOL_NAME_LIST = ['qc']
+TOOL_NAME_LIST = ["qc", "detect-doublets", "normalize"]
 
 
 def read(rel_path):
     here = os.path.abspath(os.path.dirname(__file__))
-    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
+    with codecs.open(os.path.join(here, rel_path), "r") as fp:
         return fp.read()
 
 
 def get_version() -> str:
-    for line in read('__init__.py').splitlines():
-        if line.startswith('__version__'):
+    for line in read("__init__.py").splitlines():
+        if line.startswith("__version__"):
             delim = '"' if '"' in line else "'"
             return line.split(delim)[1]
     else:
@@ -67,7 +67,7 @@ def generate_cli_dictionary() -> Dict[str, AbstractCLI]:
         module_cli_str_list = ["cellcommander", tool_name.replace("-", "_"), "cli"]
 
         # Import the module.
-        module_cli = importlib.import_module('.'.join(module_cli_str_list))
+        module_cli = importlib.import_module(".".join(module_cli_str_list))
 
         # Note: the module must have a file named cli.py in the main
         # directory, containing a class named CLI, which implements AbstractCLI.
@@ -80,20 +80,24 @@ def get_populated_argparser() -> argparse.ArgumentParser:
     # Set up argument parser.
     parser = argparse.ArgumentParser(
         prog="cellcommander",
-        description="CellCommander is a software package for running common single cell analysis tasks via the command line")
+        description="CellCommander is a software package for running common single cell analysis tasks via the command line",
+    )
 
     # Add the ability to display the version.
-    parser.add_argument('-v', '--version', action='version', version=get_version())
+    parser.add_argument("-v", "--version", action="version", version=get_version())
 
     # Declare the existence of sub-parsers.
     subparsers = parser.add_subparsers(
-        title="sub-commands",
-        description="valid cellcommander commands",
-        dest="tool")
+        title="sub-commands", description="valid cellcommander commands", dest="tool"
+    )
 
     for tool_name in TOOL_NAME_LIST:
-        module_argparse_str_list = ["cellcommander", tool_name.replace("-", "_"), "argparser"]
-        module_argparse = importlib.import_module('.'.join(module_argparse_str_list))
+        module_argparse_str_list = [
+            "cellcommander",
+            tool_name.replace("-", "_"),
+            "argparser",
+        ]
+        module_argparse = importlib.import_module(".".join(module_argparse_str_list))
         subparsers = module_argparse.add_subparser_args(subparsers)
 
     return parser
@@ -121,11 +125,10 @@ def main():
         cli_dict[args.tool].run(args)
 
     else:
-
         parser.print_help()
 
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

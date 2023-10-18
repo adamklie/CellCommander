@@ -30,7 +30,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Data file on which to run tool. "
         "The following input formats are supported: "
         "CellRanger v2 and v3 (.h5) or AnnData (.h5ad). "
-        "This will work for 10x multiome data as well."
+        "This will work for 10x multiome data as well.",
     )
     subparser.add_argument(
         "--outdir_path",
@@ -75,11 +75,23 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "If not provided, the source will be 'external'.",
     )
     subparser.add_argument(
+        "--barcode_exclusion_list_paths",
+        nargs="+",
+        type=str,
+        dest="barcode_exclusion_list_paths",
+        required=False,
+        default=None,
+        help="Paths to files containing barcodes (one per line) to exclude. "
+        "If provided, all barcodes in these files will be "
+        "excluded from the analysis (e.g. detected doublets). ",
+    )
+    subparser.add_argument(
         "--mode",
         nargs=None,
         type=str,
         dest="mode",
         required=False,
+        choices=["rna", "atac"],
         default="rna",
         help="Mode of the data. "
         "Currently only supports 'rna' and 'atac' mode. "
@@ -129,12 +141,12 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "for filtering cells based on total counts. ",
     )
     subparser.add_argument(
-        "--n_features_by_counts_nmads",
+        "--n_features_nmads",
         nargs=None,
         type=float,
-        dest="n_features_by_counts_nmads",
+        dest="n_features_nmads",
         required=False,
-        default=consts.DEFAULT_N_FEATURES_BY_COUNTS_NMADS,
+        default=consts.DEFAULT_N_FEATURES_NMADS,
         help="Number of median absolute deviations "
         "from the median number of features by counts "
         "to use as the cutoff for filtering cells based "
@@ -173,40 +185,119 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="All cells with that have a mad for percentage of counts "
         "in mitochondrial features greater than this threshold "
         "will be filtered out. "
-        "Only used if filtering strategy is `mad`.",
+        "Only used in 'rna' mode if filtering strategy is `mad`.",
     )
     subparser.add_argument(
-        "--pct_counts_mt_threshold",
-        nargs=None,
-        type=float,
-        dest="pct_counts_mt_threshold",
-        required=False,
-        default=consts.DEFAULT_PCT_COUNTS_MT_THRESHOLD,
-        help="All cells with a percentage of counts in mitochondrial "
-        "features greater than this threshold will be filtered out. "
-        "Only used if filtering strategy is `thresholds`.",
-    )
-    subparser.add_argument(
-        "--n_features_low_threshold",
+        "--ns_nmads",
         nargs=None,
         type=int,
-        dest="n_features_low_threshold",
+        dest="ns_nmads",
         required=False,
-        default=consts.DEFAULT_N_FEATURES_LOW_THRESHOLD,
+        default=consts.DEFAULT_NS_NMADS,
+        help="All cells with that have a mad for nucleosome signal "
+        "greater than this threshold "
+        "will be filtered out. "
+        "Only used in 'atac' mode if filtering strategy is `mad`.",
+    )
+    subparser.add_argument(
+        "--tss_nmads",
+        nargs=None,
+        type=int,
+        dest="tss_nmads",
+        required=False,
+        default=consts.DEFAULT_TSS_NMADS,
+        help="All cells with that have a mad for TSS enrichment "
+        "greater than this threshold "
+        "will be filtered out. "
+        "Only used in 'atac' mode if filtering strategy is `mad`.",
+    )
+    subparser.add_argument(
+        "--n_features_low",
+        nargs=None,
+        type=int,
+        dest="n_features_low",
+        required=False,
+        default=consts.DEFAULT_N_FEATURES_LOW,
         help="All cells with a number of features by counts "
         "less than this threshold will be filtered out. "
-        "Only used if filtering strategy is `thresholds`.",
+        "Only used if filtering strategy is `threshold`.",
     )
     subparser.add_argument(
-        "--n_features_high_threshold",
+        "--n_features_hi",
         nargs=None,
         type=int,
-        dest="n_features_high_threshold",
+        dest="n_features_hi",
         required=False,
-        default=consts.DEFAULT_N_FEATURES_HIGH_THRESHOLD,
+        default=consts.DEFAULT_N_FEATURES_HI,
         help="All cells with a number of features by counts "
         "greater than this threshold will be filtered out. "
-        "Only used if filtering strategy is `thresholds`.",
+        "Only used if filtering strategy is `threshold`.",
+    )
+    subparser.add_argument(
+        "--pct_counts_mt_hi",
+        nargs=None,
+        type=float,
+        dest="pct_counts_mt_hi",
+        required=False,
+        default=consts.DEFAULT_PCT_COUNTS_MT_HI,
+        help="All cells with a percentage of counts in mitochondrial "
+        "features greater than this threshold will be filtered out. "
+        "Only used in 'rna' mode regardless of filtering strategy.",
+    )
+    subparser.add_argument(
+        "--total_counts_low",
+        nargs=None,
+        type=int,
+        dest="total_counts_low",
+        required=False,
+        default=consts.DEFAULT_TOTAL_COUNTS_LOW,
+        help="All cells with a total counts "
+        "less than this threshold will be filtered out. "
+        "Only used in 'atac' mode if filtering strategy is `threshold`.",
+    )
+    subparser.add_argument(
+        "--total_counts_hi",
+        nargs=None,
+        type=int,
+        dest="total_counts_hi",
+        required=False,
+        default=consts.DEFAULT_TOTAL_COUNTS_HI,
+        help="All cells with a total counts "
+        "greater than this threshold will be filtered out. "
+        "Only used in 'atac' mode if filtering strategy is `threshold`.",
+    )
+    subparser.add_argument(
+        "--ns_hi",
+        nargs=None,
+        type=float,
+        dest="ns_hi",
+        required=False,
+        default=consts.DEFAULT_NS_HI,
+        help="All cells with a nucleosome signal greater than this "
+        "threshold will be filtered out. "
+        "Only used in 'atac' mode when filtering strategy is `threshold`.",
+    )
+    subparser.add_argument(
+        "--tss_low",
+        nargs=None,
+        type=float,
+        dest="tss_low",
+        required=False,
+        default=consts.DEFAULT_TSS_LOW,
+        help="All cells with a TSS enrichment less than this "
+        "threshold will be filtered out. "
+        "Only used in 'atac' mode when filtering strategy is `threshold`.",
+    )
+    subparser.add_argument(
+        "--tss_hi",
+        nargs=None,
+        type=float,
+        dest="tss_hi",
+        required=False,
+        default=consts.DEFAULT_TSS_HI,
+        help="All cells with a TSS enrichment greater than this "
+        "threshold will be filtered out. "
+        "Only used in 'atac' mode when filtering strategy is `threshold`.",
     )
     subparser.add_argument(
         "--atac_qc_tool",
@@ -221,19 +312,48 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "At a minimum, the tool will be used to calculate the per barcode TSS enrichment"
         "Other metrics may be calculated depending on the tool. "
         "For instance, if pycistopic is selected, it will also output sample level metrics "
-        "in the output directory."
+        "in the output directory.",
     )
     subparser.add_argument(
-        "--min_cells",
+        "--n_for_ns_calc",
         nargs=None,
         type=int,
-        dest="min_cells",
+        dest="n_for_ns_calc",
         required=False,
-        default=consts.DEFAULT_MIN_CELLS,
+        default=consts.DEFAULT_N_FOR_NS_CALC,
+        help="Number of cells to use for calculating the "
+        "nucleosome signal. Used when 'atac_qc_tool' is 'muon'.",
+    )
+    subparser.add_argument(
+        "--n_tss",
+        nargs=None,
+        type=int,
+        dest="n_tss",
+        required=False,
+        default=consts.DEFAULT_N_TSS,
+        help="Number of TSS's to use for calculating the "
+        "TSS enrichment. Used when 'atac_qc_tool' is 'muon'.",
+    )
+    subparser.add_argument(
+        "--min_cells_per_feature",
+        nargs=None,
+        type=int,
+        dest="min_cells_per_feature",
+        required=False,
+        default=consts.DEFAULT_MIN_CELLS_PER_FEATURE,
         help="The number of cells a feature must be detected in "
         "to be included in the analysis "
         "Only use this if you would like to remove very rare features "
         "in the early stages of the analysis. ",
+    )
+    subparser.add_argument(
+        "--random-state",
+        nargs=None,
+        type=int,
+        dest="random_state",
+        required=False,
+        default=consts.RANDOM_STATE,
+        help="Random state to use for random number generators.",
     )
     subparser.add_argument(
         "--cpu-threads",
@@ -249,14 +369,5 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         action="store_true",
         help="Including the flag --debug will log "
         "extra messages useful for debugging.",
-    )
-    subparser.add_argument(
-        "--truth",
-        type=str,
-        default=None,
-        dest="truth_file",
-        help="This is only used by developers for report "
-        "generation.  Truth h5 file (for "
-        "simulated data only).",
     )
     return subparsers

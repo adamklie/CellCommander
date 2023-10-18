@@ -1,0 +1,93 @@
+import logging
+import os
+
+import matplotlib
+import numpy as np
+import pandas as pd
+import anndata2ri
+from rpy2 import robjects as ro
+from rpy2.robjects.packages import importr
+from anndata import AnnData
+anndata2ri.activate()
+anndata2ri.scipy2ri.activate()
+matplotlib.use("Agg")
+from typing import Iterable, Optional, Tuple
+
+import matplotlib.pyplot as plt  # This needs to be after matplotlib.use('Agg')
+
+from cellcommander.normalize.utils import plot_against_raw
+logger = logging.getLogger("cellcommander")
+
+
+def run_sctransform(
+    adata,
+):
+    logger.info("Importing necessary R modules for AMULET.")
+    Seurat = importr("Seurat")
+    SeuratObject = importr("SeuratObject")
+    Matrix = importr("Matrix")
+    
+    # Prepare data for Seurat
+    data_mat = adata.X.T.astype("float32")
+    cell_names = adata.obs_names
+    gene_names = adata.var_names
+
+    # Load into global environment
+    ro.globalenv["data_mat"] = data_mat
+    ro.globalenv["cell_names"] = cell_names
+    ro.globalenv["gene_names"] = gene_names
+
+    # Run SCTransform
+    ro.r('''mtx = Matrix(data_mat, sparse = TRUE)
+            rownames(mtx) = gene_names
+            colnames(mtx) = cell_names
+            sobj = CreateSeuratObject(counts = mtx, assay = "RNA")
+            sobj = SCTransform(sobj, verbose = FALSE, method = "glmGamPoi")
+            counts = GetAssayData(object = sobj, assay = "SCT", slot = "counts")
+            data = GetAssayData(object = sobj, assay = "SCT", slot = "data")
+            scale_data = GetAssayData(object = sobj, assay = "SCT", slot = "scale.data")
+            variable_genes = VariableFeatures(object = sobj)
+        ''')
+    
+    # Get results into Python
+    sct_counts = ro.globalenv["counts"]
+    sct_data = ro.globalenv["data"]
+    sct_scale_data = ro.globalenv["scale_data"]
+    sct_variable_genes = ro.globalenv["variable_genes"]
+
+    # Reformat the scale data
+    scale_data_df = pd.DataFrame(data=sct_scale_data.T, index=cell_names, columns=sct_variable_genes)
+
+    # Add the sctransform normalization to the adata object
+    adata.obsm["sctransform_scale_data"] = scale_data_df
+    adata.layers["sctransform_corrected_counts"] = sct_counts.T
+    adata.layers["sctransform_corrected_log1p_counts"] = sct_data.T
+    adata.var["sctransform_genes"] = adata.var.index.isin(sct_variable_genes)
+
+
+def plot_sctransform(
+    adata: AnnData,
+    outdir_path: str,
+):
+    plot_against_raw(adata, outdir_path, obsm_key="sctransform_scale_data")
+
+
+def save_sctransform(
+    adata: AnnData,
+    outdir_path: str,
+):
+    logger.info(f"Saving tfidf normalized data to {os.path.join(outdir_path, 'tfidf_norm.h5ad')}")
+    X = adata.obsm["sctransform_scale_data"]
+    X.to_csv(os.path.join(outdir_path, "sctransform_scale_data.csv"))    
+    adata.obs.index.to_series().to_csv(os.path.join(outdir_path, "barcodes.tsv"), sep="\t", index=False, header=False)
+    adata.var.index.to_series().to_csv(os.path.join(outdir_path, "features.tsv"), sep="\t", index=False, header=False)
+
+
+def sctransform_recipe(
+    adata: AnnData,
+    outdir_path: str,
+):
+    logger.info("Running SCTransform normalization with Seurat.")
+    run_sctransform(adata)
+    plot_sctransform(adata, outdir_path)
+    save_sctransform(adata, outdir_path)
