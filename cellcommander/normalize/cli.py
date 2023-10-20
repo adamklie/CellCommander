@@ -41,6 +41,21 @@ class CLI(AbstractCLI):
                 f"Ensure the directory exists and is write accessible."
             )
 
+        # If either log-tf or log-idf is set to True, set log-tf-idf to False
+        if args.log_tf or args.log_idf:
+            if args.log_tfidf:
+                args.log_tfidf = False
+                logging.warning(
+                    "If either log-tf and log-idf are set to True, "
+                    "log-tf-idf cannot be set to True. Setting log-tf-idf to False."
+                )
+        # If log-tf-idf is set to True, set log-tf and log-idf to False
+        if args.log_tfidf:
+            args.log_tf = False
+            args.log_idf = False
+            logging.warning(
+                "log-tfidf is set to True. Setting log-tf and log-idf to False."
+            )
         # Make sure n_threads makes sense.
         if args.n_threads is not None:
             assert args.n_threads > 0, "--cpu-threads must be an integer >= 1"

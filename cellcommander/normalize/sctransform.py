@@ -22,7 +22,7 @@ logger = logging.getLogger("cellcommander")
 def run_sctransform(
     adata,
 ):
-    logger.info("Importing necessary R modules for AMULET.")
+    logger.info("Importing necessary R modules for running SCTransform with Seurat.")
     Seurat = importr("Seurat")
     SeuratObject = importr("SeuratObject")
     Matrix = importr("Matrix")
@@ -60,8 +60,8 @@ def run_sctransform(
 
     # Add the sctransform normalization to the adata object
     adata.obsm["sctransform_scale_data"] = scale_data_df
-    adata.layers["sctransform_corrected_counts"] = sct_counts.T
-    adata.layers["sctransform_corrected_log1p_counts"] = sct_data.T
+    #adata.layers["sctransform_corrected_counts"] = sct_counts.T
+    #adata.layers["sctransform_corrected_log1p_counts"] = sct_data.T
     adata.var["sctransform_genes"] = adata.var.index.isin(sct_variable_genes)
 
 
@@ -76,18 +76,22 @@ def save_sctransform(
     adata: AnnData,
     outdir_path: str,
 ):
-    logger.info(f"Saving tfidf normalized data to {os.path.join(outdir_path, 'tfidf_norm.h5ad')}")
+    logger.info(f"Saving SCTransform normalized data to {os.path.join(outdir_path, 'tfidf_norm.h5ad')}")
     X = adata.obsm["sctransform_scale_data"]
     X.to_csv(os.path.join(outdir_path, "sctransform_scale_data.csv"))    
-    adata.obs.index.to_series().to_csv(os.path.join(outdir_path, "barcodes.tsv"), sep="\t", index=False, header=False)
-    adata.var.index.to_series().to_csv(os.path.join(outdir_path, "features.tsv"), sep="\t", index=False, header=False)
+    X.index.to_series().to_csv(os.path.join(outdir_path, "barcodes.tsv"), sep="\t", index=False, header=False)
+    X.columns.to_series().to_csv(os.path.join(outdir_path, "features.tsv"), sep="\t", index=False, header=False)
 
 
 def sctransform_recipe(
     adata: AnnData,
     outdir_path: str,
+    save_normalized_mtx: bool = False,
 ):
     logger.info("Running SCTransform normalization with Seurat.")
     run_sctransform(adata)
     plot_sctransform(adata, outdir_path)
-    save_sctransform(adata, outdir_path)
+    if save_normalized_mtx:
+        if not os.path.exists(os.path.join(outdir_path, "sctransform")):
+            os.makedirs(os.path.join(outdir_path, "sctransform"))
+        save_sctransform(adata, os.path.join(outdir_path, "sctransform"))

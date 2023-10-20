@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from typing import Dict
 
 # New tools should be added to this list.
-TOOL_NAME_LIST = ["qc", "detect-doublets", "normalize"]
+TOOL_NAME_LIST = ["qc", "detect-doublets", "normalize", "select-features", "reduce-dimensions", "annotate", "joint-integrate"]
 
 
 def read(rel_path):

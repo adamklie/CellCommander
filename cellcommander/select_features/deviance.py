@@ -20,7 +20,9 @@ logger = logging.getLogger("cellcommander")
 
 def run_deviance(
     adata: AnnData,
+    n_top_genes: int = 4000,
 ):
+    logger.info("Running deviance-based feature selection with R implementation (scry).")
     adata_ = sc.AnnData(adata.X.copy())
     adata_.obs_names = adata.obs_names.copy()
     adata_.var_names = adata.var_names.copy()
@@ -38,7 +40,7 @@ def run_deviance(
     binomial_deviance = ro.globalenv["binomial_deviance"].T
 
     # Annotate highly deviant genes
-    idx = binomial_deviance.argsort()[-4000:]
+    idx = binomial_deviance.argsort()[-n_top_genes:]
     mask = np.zeros(adata.var_names.shape, dtype=bool)
     mask[idx] = True
     adata.var["highly_deviant"] = mask

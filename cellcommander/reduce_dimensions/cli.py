@@ -1,4 +1,4 @@
-"""Command-line tool functionality for select_features."""
+"""Command-line tool functionality for reduce_dimensions."""
 
 import argparse
 import logging
@@ -7,15 +7,15 @@ import sys
 
 import cellcommander
 from cellcommander.base_cli import AbstractCLI, get_version
-from cellcommander.select_features.checkpoint import create_workflow_hashcode
-from cellcommander.select_features.run import run_select_features
+from cellcommander.reduce_dimensions.checkpoint import create_workflow_hashcode
+from cellcommander.reduce_dimensions.run import run_reduce_dimensions
 
 
 class CLI(AbstractCLI):
     """CLI implements AbstractCLI from the cellcommander package."""
 
     def __init__(self):
-        self.name = "select-features"
+        self.name = "reduce-dimensions"
         self.args = None
 
     def get_name(self) -> str:
@@ -41,6 +41,10 @@ class CLI(AbstractCLI):
                 f"Ensure the directory exists and is write accessible."
             )
 
+        # Make sure components-to-remove is a list of ints
+        if args.components_to_remove is not None:
+            args.components_to_remove = [int(x) for x in args.components_to_remove]
+
         # Make sure n_threads makes sense.
         if args.n_threads is not None:
             assert args.n_threads > 0, "--cpu-threads must be an integer >= 1"
@@ -61,7 +65,7 @@ def setup_and_logging(args):
 
     # Send logging messages to stdout as well as a log file.
     output_dir = args.output_dir
-    log_file = os.path.join(output_dir, "select_features.log")
+    log_file = os.path.join(output_dir, "reduce_dimensions.log")
     logger = logging.getLogger("cellcommander")  # name of the logger
     logger.setLevel(logging.INFO if not args.debug else logging.DEBUG)
     formatter = logging.Formatter("cellcommander:select-features: %(message)s")
@@ -73,7 +77,7 @@ def setup_and_logging(args):
     logger.addHandler(console_handler)  # log to stdout
 
     # Log the command as typed by user.
-    logger.info("Command:\n" + " ".join(["cellcommander", "select_features"] + sys.argv[2:]))
+    logger.info("Command:\n" + " ".join(["cellcommander", "reduce_dimensions"] + sys.argv[2:]))
     logger.info("cellcommander " + get_version())
 
     # Set up checkpointing by creating a unique workflow hash.
@@ -99,7 +103,7 @@ def main(args):
     args, file_handler = setup_and_logging(args)
 
     # Run the tool.
-    run_select_features(args)
+    run_reduce_dimensions(args)
     file_handler.close()
 
     return

@@ -40,20 +40,20 @@ def run_amulet(
     amulet_result = ro.globalenv["amulet_result"]
     
     # Save raw output
-    amulet_result.to_csv(os.path.join(outdir_path, "AMULET_raw_output.csv"))
+    amulet_result.to_csv(os.path.join(outdir_path, "amulet_raw_output.csv"))
 
      # Merge with barcodes in adata.obs
     amulet_merged_result = adata.obs.merge(amulet_result, left_index=True, right_index=True, how="left")
 
     # Add columns to adata.obs
-    adata.obs["AMULET_pVal"] = amulet_merged_result["p.value"]
-    adata.obs["AMULET_qVal"] = amulet_merged_result["q.value"]
-    adata.obs["AMULET_predicted_doublet"] = adata.obs["AMULET_qVal"] < 0.05
-    adata.obs["AMULET_negLog10qVal"] = -1 * np.log10(adata.obs["AMULET_qVal"])
-    adata.obs["AMULET_doublet_score"] = adata.obs["AMULET_negLog10qVal"]
+    adata.obs["amulet_pVal"] = amulet_merged_result["p.value"]
+    adata.obs["amulet_qVal"] = amulet_merged_result["q.value"]
+    adata.obs["amulet_predicted_doublet"] = adata.obs["amulet_qVal"] < 0.05
+    adata.obs["amulet_negLog10qVal"] = -1 * np.log10(adata.obs["amulet_qVal"])
+    adata.obs["amulet_doublet_score"] = adata.obs["amulet_negLog10qVal"]
 
     # Some are NA, likely cuz they have low counts
-    adata.obs["AMULET_na"] = adata.obs["AMULET_qVal"].isna()
+    adata.obs["amulet_na"] = adata.obs["amulet_qVal"].isna()
 
 
 def plot_amulet(
@@ -64,11 +64,11 @@ def plot_amulet(
     logger.info("Generating AMULET score plots.")
     with plt.rc_context():
         _, ax = plt.subplots(figsize=(4, 4))
-        ax.hist(adata.obs["AMULET_doublet_score"], bins=100)
+        ax.hist(adata.obs["amulet_doublet_score"].clip(upper=10), bins=100)
         ax.set_xlabel("AMULET score")
         ax.set_ylabel("Number of cells")
         plt.tight_layout()
-        plt.savefig(os.path.join(outdir_path, "AMULET_score_distribution.png"))
+        plt.savefig(os.path.join(outdir_path, "amulet_score_distribution.png"))
         plt.close()
 
 
@@ -76,10 +76,10 @@ def save_amulet(
     adata: AnnData,
     outdir_path: str,
 ):
-    doublet_df = adata.obs[['AMULET_pVal', 'AMULET_qVal', 'AMULET_negLog10qVal', 'AMULET_predicted_multiplet', 'AMULET_na']]
-    doublet_df.to_csv(os.path.join(outdir_path, "AMULET_scores.csv"))
-    doublet_bcs = doublet_df[doublet_df["AMULET_predicted_multiplet"] == True].index.tolist()
-    with open(os.path.join(outdir_path, "AMULET_predicted_doublets.txt"), "w") as f:
+    doublet_df = adata.obs[['amulet_pVal', 'amulet_qVal', 'amulet_negLog10qVal', 'amulet_predicted_doublet', 'amulet_na']]
+    doublet_df.to_csv(os.path.join(outdir_path, "amulet_scores.csv"))
+    doublet_bcs = doublet_df[doublet_df["amulet_predicted_doublet"] == True].index.tolist()
+    with open(os.path.join(outdir_path, "amulet_predicted_doublets.txt"), "w") as f:
         for bc in doublet_bcs:
             f.write(bc + "\n")
 

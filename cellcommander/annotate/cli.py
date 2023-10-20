@@ -1,4 +1,4 @@
-"""Command-line tool functionality for select_features."""
+"""Command-line tool functionality for annotate."""
 
 import argparse
 import logging
@@ -7,15 +7,15 @@ import sys
 
 import cellcommander
 from cellcommander.base_cli import AbstractCLI, get_version
-from cellcommander.select_features.checkpoint import create_workflow_hashcode
-from cellcommander.select_features.run import run_select_features
+from cellcommander.annotate.checkpoint import create_workflow_hashcode
+from cellcommander.annotate.run import run_annotate
 
 
 class CLI(AbstractCLI):
     """CLI implements AbstractCLI from the cellcommander package."""
 
     def __init__(self):
-        self.name = "select-features"
+        self.name = "annotate"
         self.args = None
 
     def get_name(self) -> str:
@@ -61,10 +61,10 @@ def setup_and_logging(args):
 
     # Send logging messages to stdout as well as a log file.
     output_dir = args.output_dir
-    log_file = os.path.join(output_dir, "select_features.log")
+    log_file = os.path.join(output_dir, "annotate.log")
     logger = logging.getLogger("cellcommander")  # name of the logger
     logger.setLevel(logging.INFO if not args.debug else logging.DEBUG)
-    formatter = logging.Formatter("cellcommander:select-features: %(message)s")
+    formatter = logging.Formatter("cellcommander:annotate: %(message)s")
     file_handler = logging.FileHandler(filename=log_file, mode="w", encoding="UTF-8")
     console_handler = logging.StreamHandler()
     file_handler.setFormatter(formatter)  # set the file format
@@ -73,7 +73,7 @@ def setup_and_logging(args):
     logger.addHandler(console_handler)  # log to stdout
 
     # Log the command as typed by user.
-    logger.info("Command:\n" + " ".join(["cellcommander", "select_features"] + sys.argv[2:]))
+    logger.info("Command:\n" + " ".join(["cellcommander", "annotate"] + sys.argv[2:]))
     logger.info("cellcommander " + get_version())
 
     # Set up checkpointing by creating a unique workflow hash.
@@ -99,7 +99,7 @@ def main(args):
     args, file_handler = setup_and_logging(args)
 
     # Run the tool.
-    run_select_features(args)
+    run_annotate(args)
     file_handler.close()
 
     return

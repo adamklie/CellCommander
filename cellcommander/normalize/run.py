@@ -56,14 +56,17 @@ def run_normalize(args: argparse.Namespace):
         adata.var_names_make_unique()
         describe_anndata(adata)
 
+        if "counts" not in adata.layers.keys():
+            logger.info("Copying counts to layers with key 'counts'")
+            adata.layers["counts"] = adata.X.copy()
+
         # Run methods
         if "sctransform" in args.methods:
-            sctransform_recipe(adata, args.output_dir)
+            sctransform_recipe(adata, args.output_dir, save_normalized_mtx=args.save_normalized_mtx)
 
         if "tfidf" in args.methods:
-            tfidf_recipe(adata, args.output_dir, scale_factor=args.tfidf_scale_factor)
+            tfidf_recipe(adata, args.output_dir, scale_factor=args.tfidf_scale_factor, save_normalized_mtx=args.save_normalized_mtx)
             
-
         # Save the adata
         logger.info(
             f"Saving adata with normalizations in obsm and layers to {os.path.join(args.output_dir, f'{args.output_prefix}.h5ad')}"

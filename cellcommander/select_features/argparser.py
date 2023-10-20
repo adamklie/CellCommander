@@ -44,19 +44,93 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         type=str,
         dest="output_prefix",
         required=False,
-        default="select-features",
+        default="select_features",
         help="Prefix for output files. " "If not provided, the prefix will be 'select-features'.",
     )
     subparser.add_argument(
         "--methods",
         nargs="+",
         type=str,
-        dest="method",
-        choices=["seurat", "deviance"],
+        dest="methods",
+        choices=["seurat", "seurat_v3", "cell_ranger", "deviance", "signac"],
         required=False,
         default="seurat",
         help="Method to use for normalization. "
         "Currently supports 'seurat' for scRNA-seq data "
+    )
+    subparser.add_argument(
+        "--layer",
+        nargs=None,
+        type=str,
+        dest="layer",
+        required=False,
+        default=None,
+        help="Layer in the AnnData to use for normalization. "
+        "If not provided, the '.X' matrix will be used. "
+        "Note that choice of layer should be consistent with the choice of method. "
+    )
+    subparser.add_argument(
+        "--min-mean",
+        nargs=None,
+        type=float,
+        dest="min_mean",
+        required=False,
+        default=consts.DEFAULT_MIN_MEAN,
+        help="Minimum mean for feature selection.",
+    )
+    subparser.add_argument(
+        "--max-mean",
+        nargs=None,
+        type=float,
+        dest="max_mean",
+        required=False,
+        default=consts.DEFAULT_MAX_MEAN,
+        help="Maximum mean for feature selection.",
+    )
+    subparser.add_argument(
+        "--min-disp",
+        nargs=None,
+        type=float,
+        dest="min_disp",
+        required=False,
+        default=consts.DEFAULT_MIN_DISP,
+        help="Minimum dispersion for feature selection.",
+    )
+    subparser.add_argument(
+        "--max-disp",
+        nargs=None,
+        type=float,
+        dest="max_disp",
+        required=False,
+        default=consts.DEFAULT_MAX_DISP,
+        help="Maximum dispersion for feature selection.",
+    )
+    subparser.add_argument(
+        "--n-bins",
+        nargs=None,
+        type=int,
+        dest="n_bins",
+        required=False,
+        default=consts.DEFAULT_N_BINS,
+        help="Number of bins for feature selection.",
+    )
+    subparser.add_argument(
+        "--n-top-genes",
+        nargs=None,
+        type=int,
+        dest="n_top_genes",
+        required=False,
+        default=consts.DEFAULT_N_TOP_GENES,
+        help="Number of top genes for feature selection.",
+    )
+    subparser.add_argument(
+        "--span",
+        nargs=None,
+        type=float,
+        dest="span",
+        required=False,
+        default=consts.DEFAULT_SPAN,
+        help="Span for feature selection.",
     )
     subparser.add_argument(
         '--initial-clust-n-neighbors',

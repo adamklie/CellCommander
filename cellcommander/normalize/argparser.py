@@ -51,13 +51,62 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "--methods",
         nargs="+",
         type=str,
-        dest="method",
-        choices=["log1p", "scran", "pearson", "depth", "sctransform", "lsi"],
+        dest="methods",
+        choices=["log1p", "scran", "pearson", "depth", "sctransform", "tfidf"],
         required=False,
         default="log1p",
         help="Method to use for normalization. "
         "Currently supports 'log1p', 'scran', 'pearson', 'depth', 'sctransform' for scRNA-seq data "
         "and 'lsi' for scATAC-seq data. ",
+    )
+    subparser.add_argument(
+        "--save-normalized-mtx",
+        dest="save_normalized_mtx",
+        action="store_true",
+        help="Including the flag --save-normalized-matrix will save the normalized matrix to a file, "
+        "in addition to a barcodes.tsv and features.tsv file.",
+    )
+    subparser.add_argument(
+        "--log_idf",
+        nargs=None,
+        type=bool,
+        dest="log_idf",
+        required=False,
+        default=True,
+        help="Whether to log the inverse document frequency values for the tfidf method. "
+        "To run the Signac version of tfidf "
+        "set this to False, '--log-tf' to False, and '--log-tf-idf to True.",
+    )
+    subparser.add_argument(
+        "--log-tf",
+        nargs=None,
+        type=bool,
+        dest="log_tf",
+        required=False,
+        default=True,
+        help="Whether to log the term frequency values for the tfidf method. "
+        "To run the Signac version of tfidf "
+        "set this to False, '--log-idf' to False, and '--log-tf-idf to True.",
+    )
+    subparser.add_argument(
+        "--log-tf-idf",
+        nargs=None,
+        type=bool,
+        dest="log_tfidf",
+        required=False,
+        default=False,
+        help="Whether to log the tfidf values for the tfidf method. "
+        "To run the Signac version of tfidf "
+        "If True, 'log-tf' and 'log-idf' are automatically set to False.",
+    )
+    subparser.add_argument(
+        "--tfidf-scale-factor",
+        nargs=None,
+        type=float,
+        dest="tfidf_scale_factor",
+        required=False,
+        default=1e4,
+        help="Scale factor for tfidf normalization.",
     )
     subparser.add_argument(
         '--initial-clust-n-neighbors',
