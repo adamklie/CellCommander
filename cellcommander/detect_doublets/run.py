@@ -88,6 +88,7 @@ def run_detect_doublets(args: argparse.Namespace):
             scDblFinder_recipe(
                 adata=adata, 
                 outdir_path=args.output_dir, 
+                atac_params=args.scDblFinder_atac_params,
                 random_state=args.random_state
             )
             

@@ -77,10 +77,12 @@ def run_joint_integrate(args: argparse.Namespace):
                 cluster_resolution=args.clust_resolution
             )
             if args.cluster_key:
-                with plt.rc_context({"axes.facecolor": "white", "figure.facecolor": "white"}):
+                with plt.rc_context():
                     mu.pl.embedding(
                         mdata, color=[args.cluster_key, "wnn_RNA_weight", "wnn_ATAC_weight"], ncols=2, basis="X_umap_wnn", frameon=False
                     )
+                    plt.savefig(os.path.join(args.output_dir, f"wnn_umap.png"))
+                    plt.close()
             del mdata.obsp["wnn_connectivities"]
 
         # Save the mdata

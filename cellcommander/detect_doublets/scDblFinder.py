@@ -4,7 +4,7 @@ import os
 import matplotlib
 import scanpy as sc
 import anndata2ri
-from rpy2 import robjects
+from rpy2 import robjects as ro
 from rpy2.robjects.packages import importr
 from anndata import AnnData
 anndata2ri.activate()
@@ -19,6 +19,7 @@ logger = logging.getLogger("cellcommander")
 
 def run_scDblFinder(
     adata: AnnData,
+    atac_params: bool,
     random_state: int,
 ):
     logger.info("Importing necessary R modules for scDblFinder.")
@@ -26,9 +27,18 @@ def run_scDblFinder(
     SingleCellExperiment = importr("SingleCellExperiment")
     logger.info("Running scDblFinder for doublet detection.")
     data_mat = adata.X.T.astype("float32")  # needed to avoid error in anndata2ri v1.1)
-    robjects.r("set.seed({})".format(random_state))
-    scDblFinder_obj = scDblFinder.scDblFinder(SingleCellExperiment.SingleCellExperiment(assays=robjects.ListVector({"counts": data_mat})))
-    scDblFinder_df = anndata2ri.rpy2py(scDblFinder_obj.do_slot("colData"))
+    ro.r("set.seed({})".format(random_state))
+    if atac_params:
+        logger.info("Setting scDblFinder parameters to defaults for scATAC-seq data.")
+        ro.globalenv["data_mat"] = data_mat
+        ro.r('''sce <- scDblFinder(SingleCellExperiment(list(counts=data_mat)), clusters=TRUE, aggregateFeatures=TRUE, nfeatures=25, processing="normFeatures")
+                scDblFinder_df <- as.data.frame(colData(sce))
+             ''')
+        scDblFinder_df = ro.globalenv["scDblFinder_df"]
+    else:
+        logger.info("Setting scDblFinder parameters to defaults for scRNA-seq data.")
+        scDblFinder_obj = scDblFinder.scDblFinder(SingleCellExperiment.SingleCellExperiment(assays=ro.ListVector({"counts": data_mat})))
+        scDblFinder_df = anndata2ri.rpy2py(scDblFinder_obj.do_slot("colData"))
     adata.obs["scDblFinder_doublet_score"] = scDblFinder_df["scDblFinder.score"].values
     adata.obs["scDblFinder_doublet_class"] = scDblFinder_df["scDblFinder.class"].values
     adata.obs["scDblFinder_predicted_doublet"] = (adata.obs["scDblFinder_doublet_class"] == "doublet")

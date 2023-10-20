@@ -94,6 +94,14 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "by a majority of the methods. ",
     )
     subparser.add_argument(
+        "--scDblFinder-atac-params",
+        action="store_true",
+        dest="scDblFinder_atac_params",
+        help="If included, the scDblFinder parameters will be set to the defaults for scATAC-seq data. "
+        "See https://bioconductor.org/packages/release/bioc/vignettes/scDblFinder/inst/doc/scATAC.html#the-clamulet-method "
+        "for more details. ",
+    )
+    subparser.add_argument(
         "--no-filter",
         action="store_true",
         dest="no_filter",
