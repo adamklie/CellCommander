@@ -13,6 +13,7 @@ import muon as mu
 import pandas as pd
 import psutil
 import scanpy as sc
+from muon import atac as ac
 from mudata import MuData
 
 matplotlib.use("Agg")
@@ -24,6 +25,7 @@ sc.settings.set_figure_params(
     facecolor="white",
     frameon=False,
 )
+from cellcommander.utils import describe_anndata, describe_mudata
 from cellcommander.qc import consts
 from cellcommander.qc.atac import atac_outlier_filter, atac_qc, atac_qc_triplet_plot
 from cellcommander.qc.rna import rna_outlier_filter, rna_qc, rna_qc_triplet_plot
@@ -47,21 +49,39 @@ def run_qc(args: argparse.Namespace):
     logger.info("Running qc command")
 
     try:
-        # Read in the data
+        
+        if args.multimodal_input:
+            # Read in multimodal h5 file
+            logger.info("Reading multimodal input using Muon. Expecting to return a MuData object.")
+            data = mu.read_10x_h5(args.input_file)
+            data.var_names_make_unique()
+            describe_mudata(data)
+
+        else:
+            # Read in single modality h5 file
+            logger.info("Reading single modality input using Scanpy or Muon. Expecting to return an AnnData object.")
+            data = ac.read_10x_h5(args.input_file)
+            data.var_names_make_unique()
+            describe_anndata(data)
+
+        # If rna
         if args.mode == "rna":
-            # Read in single h5 file
-            logger.info(f"Reading h5 file from {args.input_file}")
-            adata = sc.read_10x_h5(args.input_file)
-            adata.var_names_make_unique()
+
+            # Grab the RNA only
+            if isinstance(data, MuData) and "rna" in data.mod:
+                adata = data.mod["rna"]
+            else:
+                adata = data
+
+            # Keep only features that are genes, just in case
+            adata[:, adata.var["feature_types"] == "Gene Expression"]
 
             # Sample level metrics
             metrics = ["n_genes_by_counts", "total_counts", "pct_counts_mt"]
-
+        
+        # If atac
         elif args.mode == "atac":
-            # Read in single h5 files
-            data = mu.read_10x_h5(args.input_file)
-            data.var_names_make_unique()
-
+        
             # Grab the ATAC only
             if isinstance(data, MuData) and "atac" in data.mod:
                 adata = data.mod["atac"]
@@ -71,6 +91,27 @@ def run_qc(args: argparse.Namespace):
             # Keep only features that are Peaks, just in case
             adata[:, adata.var["feature_types"] == "Peaks"]
 
+            # Make sure we have a fragments file. TODO: Move to cli checks
+            if "files" not in adata.uns:
+                logger.info("No fragment file found in adata.uns['files']. Checking arguments.")
+                if args.fragments_file is not None:
+                    logger.info(f"Using provided fragments file from {args.fragments_file}")
+                    adata.uns["files"] = {}
+                    adata.uns["files"]["fragments"] = args.fragments_file
+                else:
+                    logger.info("No fragments file provided. Checking for fragments.tsv.gz or atac_fragments.tsv.gz file in input directory.")
+                    if os.path.exists(os.path.join(os.path.dirname(args.input_file), "fragments.tsv.gz")):
+                        logger.info("Found fragments.tsv.gz file in input directory.")
+                        adata.uns["files"] = {}
+                        adata.uns["files"]["fragments"] = os.path.join(os.path.dirname(args.input_file), "fragments.tsv.gz")
+                    elif os.path.exists(os.path.join(os.path.dirname(args.input_file), "atac_fragments.tsv.gz")):
+                        logger.info("Found atac_fragments.tsv.gz file in input directory.")
+                        adata.uns["files"] = {}
+                        adata.uns["files"]["fragments"] = os.path.join(os.path.dirname(args.input_file), "atac_fragments.tsv.gz")
+                    else:
+                        logger.info("No fragments file found. Cannot calculate metrics.")
+                        sys.exit(1)
+                
             # Sample level metrics
             metrics = [
                 "frip",
@@ -147,8 +188,9 @@ def run_qc(args: argparse.Namespace):
 
             # If metadata source is cellranger, we can add some additional metrics
             if args.metadata_source == "cellranger":
-                adata.obs["frip"] = adata.obs["atac_peak_region_fragments_cellranger"]/adata.obs["atac_fragments_cellranger"]
-                adata.obs["pct_counts_mt"] = (adata.obs["atac_mitochondrial_reads_cellranger"]/adata.obs["atac_raw_reads_cellranger"])
+                if args.multimodal_input:
+                    adata.obs["frip"] = adata.obs["atac_peak_region_fragments_cellranger"]/adata.obs["atac_fragments_cellranger"]
+                    adata.obs["pct_counts_mt"] = (adata.obs["atac_mitochondrial_reads_cellranger"]/adata.obs["atac_raw_reads_cellranger"])
 
             # Calculate and store qc metrics in adata.obs
             logger.info("Calculating QC metrics and storing in adata.obs")

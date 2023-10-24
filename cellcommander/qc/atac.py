@@ -258,7 +258,7 @@ def atac_qc(
 
         # log-transform total counts and add as column
         adata.obs["log_total_counts"] = np.log10(adata.obs["total_counts"])
-
+    
     # Calculate nucleosome signal
     logger.info(f"Calculating nucleosome signal with {n_for_ns_calc} fragments per cell")
     ac.tl.nucleosome_signal(adata, n=adata.n_obs * n_for_ns_calc)

@@ -103,6 +103,24 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "fragment counts. ",
     )
     subparser.add_argument(
+        "--multimodal_input",
+        action="store_true",
+        dest="multimodal_input",
+        required=False,
+        help="If included, the input data is assumed to be multimodal. "
+        "will select the features based on the mode. ",
+    )
+    subparser.add_argument(
+        "--fragments_path",
+        nargs=None,
+        type=str,
+        dest="fragments_file",
+        required=False,
+        default=None,
+        help="Path to fragments file "
+        "containing information about fragments. ",
+    )
+    subparser.add_argument(
         "--no-filter",
         action="store_true",
         dest="no_filter",
