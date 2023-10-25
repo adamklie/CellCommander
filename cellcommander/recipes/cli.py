@@ -1,4 +1,4 @@
-"""Command-line tool functionality for reduce_dimensions."""
+"""Command-line tool functionality for recipes."""
 
 import argparse
 import logging
@@ -7,15 +7,15 @@ import sys
 
 import cellcommander
 from cellcommander.base_cli import AbstractCLI, get_version
-from cellcommander.reduce_dimensions.checkpoint import create_workflow_hashcode
-from cellcommander.reduce_dimensions.run import run_reduce_dimensions
+from cellcommander.recipes.checkpoint import create_workflow_hashcode
+from cellcommander.recipes.run import run_recipes
 
 
 class CLI(AbstractCLI):
     """CLI implements AbstractCLI from the cellcommander package."""
 
     def __init__(self):
-        self.name = "reduce-dimensions"
+        self.name = "recipes"
         self.args = None
 
     def get_name(self) -> str:
@@ -27,7 +27,8 @@ class CLI(AbstractCLI):
 
         # Ensure that if there's a tilde for $HOME in the file path, it works.
         try:
-            args.input_file = os.path.expanduser(args.input_file)
+            for i in range(len(args.input_files)):
+                args.input_files[i] = os.path.expanduser(args.input_files[i])
             args.output_dir = os.path.expanduser(args.output_dir)
         except TypeError:
             raise ValueError("Problem with provided input and output paths.")
@@ -40,10 +41,6 @@ class CLI(AbstractCLI):
                 f"Cannot write to specified output directory {args.output_dir}. "
                 f"Ensure the directory exists and is write accessible."
             )
-
-        # Make sure components-to-remove is a list of ints
-        if args.components_to_remove is not None:
-            args.components_to_remove = [int(x) for x in args.components_to_remove]
 
         # Make sure n_threads makes sense.
         if args.n_threads is not None:
@@ -65,10 +62,10 @@ def setup_and_logging(args):
 
     # Send logging messages to stdout as well as a log file.
     output_dir = args.output_dir
-    log_file = os.path.join(output_dir, "reduce_dimensions.log")
+    log_file = os.path.join(output_dir, "recipes.log")
     logger = logging.getLogger("cellcommander")  # name of the logger
     logger.setLevel(logging.INFO if not args.debug else logging.DEBUG)
-    formatter = logging.Formatter("cellcommander:reduce-dimensions: %(message)s")
+    formatter = logging.Formatter("cellcommander:recipes: %(message)s")
     file_handler = logging.FileHandler(filename=log_file, mode="w", encoding="UTF-8")
     console_handler = logging.StreamHandler()
     file_handler.setFormatter(formatter)  # set the file format
@@ -77,7 +74,7 @@ def setup_and_logging(args):
     logger.addHandler(console_handler)  # log to stdout
 
     # Log the command as typed by user.
-    logger.info("Command:\n" + " ".join(["cellcommander", "reduce_dimensions"] + sys.argv[2:]))
+    logger.info("Command:\n" + " ".join(["cellcommander", "recipes"] + sys.argv[2:]))
     logger.info("cellcommander " + get_version())
 
     # Set up checkpointing by creating a unique workflow hash.
@@ -103,7 +100,7 @@ def main(args):
     args, file_handler = setup_and_logging(args)
 
     # Run the tool.
-    run_reduce_dimensions(args)
+    run_recipes(args)
     file_handler.close()
 
     return
