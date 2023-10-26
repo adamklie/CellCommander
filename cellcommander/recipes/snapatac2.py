@@ -18,6 +18,7 @@ def single_sample_recipe(
     num_features: int = 50000,
     min_load_tsse: int = 1,
     min_load_num_fragments: int = 500,
+    min_tsse: int = 4,
     min_num_fragments: int = 1000,
     max_num_fragments: int = None,
     sorted_by_barcode: bool = True,
@@ -51,6 +52,9 @@ def single_sample_recipe(
     logger.info(f"Filtering out low quality cells with tsse<{min_tsse} and min_num_fragments<{min_num_fragments}, max_num_fragments>{max_num_fragments}")
     snap.pp.filter_cells(adata, min_tsse=min_tsse, min_counts=min_num_fragments, max_counts=max_num_fragments)
 
+    # Report number of cells after filtering
+    logger.info(f"Number of cells after filtering: {adata.shape[0]}")
+
     # Add a 5kb tile matrix
     logger.info(f"Adding a {bin_size}bp tile matrix")
     snap.pp.add_tile_matrix(adata, bin_size=bin_size)
@@ -72,6 +76,9 @@ def single_sample_recipe(
     logger.info("Filtering out doublets")
     snap.pp.filter_doublets(adata)
     
+    # Report number of cells after filtering
+    logger.info(f"Number of cells after filtering doublets: {adata.shape[0]}")
+    
     # Run the spectral embedding
     logger.info("Running spectral embedding")
     snap.tl.spectral(adata)
@@ -90,7 +97,7 @@ def single_sample_recipe(
 
     # Plot the UMAP with clusters
     logger.info("Plotting UMAP with clusters")
-    snap.pl.umap(adata, color=f"leiden", interactive=False, out_file=os.path.join(outdir_path, f"umap_leiden_{clustering_resolution}.png"))
+    snap.pl.umap(adata, color=f"leiden_{clustering_resolution}", interactive=False, out_file=os.path.join(outdir_path, f"umap_leiden_{clustering_resolution}.png"))
 
     # Save updated data
     logger.info("Saving clustered data")

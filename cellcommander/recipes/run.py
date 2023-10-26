@@ -80,6 +80,7 @@ def run_recipes(args: argparse.Namespace):
                     num_features=params["feature_selection"]["num_features"],
                     min_load_tsse=params["io"]["min_load_tsse"],
                     min_load_num_fragments=params["io"]["min_load_num_fragments"],
+                    min_tsse=params["qc"]["min_tsse"],
                     min_num_fragments=params["qc"]["min_num_fragments"],
                     max_num_fragments=params["qc"]["max_num_fragments"],
                     sorted_by_barcode=params["io"]["sorted_by_barcode"],
@@ -107,4 +108,4 @@ def run_recipes(args: argparse.Namespace):
         if os.path.exists(full_file):
             os.remove(full_file)
 
-        logger.info("Keyboard interrupt.  Terminated without saving\n")
+        logger.info("Keyboard interrupt. Terminated without saving\n")
