@@ -30,6 +30,7 @@ sc.settings.set_figure_params(
 from cellcommander.utils import describe_anndata
 from cellcommander.reduce_dimensions import consts
 from cellcommander.reduce_dimensions.lsi import run_muon_lsi
+from cellcommander.reduce_dimensions.scanpy import run_scanpy_default
 
 logger = logging.getLogger("cellcommander")
 
@@ -86,6 +87,26 @@ def run_reduce_dimensions(args: argparse.Namespace):
                 n_components = args.n_components
             adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_lsi"]
 
+        elif "scanpy_default" == args.method:
+            if args.layer is not None:
+                logger.info(f"Setting .X to come from {args.layer}")
+                adata_pp.X = adata_pp.layers[args.layer]
+                run_scanpy_default(adata_pp, layer=args.layer, n_comps=args.n_components, random_state=args.random_state)
+            elif args.obsm_key is not None:
+                run_scanpy_default(adata_pp, obsm_key=args.obsm_key, n_comps=args.n_components, random_state=args.random_state)
+            else:
+                raise NotImplementedError("Must specify either layer or obsm_key to run ScanPy default PCA.")
+            
+            if args.components_to_remove is not None:
+                logger.info(f"Removing components {args.components_to_remove} from PCA, {adata_pp.obsm['X_pca'].shape[1]} components total to start")
+                adata_pp.obsm['X_pca'] = np.delete(adata_pp.obsm['X_pca'], args.components_to_remove, axis=1)
+                adata_pp.varm["PCs"] = np.delete(adata_pp.varm["PCs"], args.components_to_remove, axis=1)
+                logger.info(f"Removed components {args.components_to_remove} from PCA, {adata_pp.obsm['X_pca'].shape[1]} components total remaining")
+                n_components = args.n_components - len(args.components_to_remove)
+            else:
+                n_components = args.n_components
+            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_pca"]
+            
         # Run UMAP
         logger.info(f"Creating kNN graph using {args.n_neighbors} neighbors and {n_components} components of the reduced data")
         sc.pp.neighbors(adata_pp, use_rep="X_reduced", n_neighbors=args.n_neighbors, n_pcs=n_components, random_state=args.random_state)

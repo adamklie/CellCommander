@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt  # This needs to be after matplotlib.use('Agg')
 
 logger = logging.getLogger("cellcommander")
 
+
 def run_muon_lsi(
     adata: AnnData,
     scale_embeddings: bool = True,

@@ -15,7 +15,7 @@ logger = logging.getLogger("cellcommander")
 
 def run_scrublet(
     adata: AnnData,
-    random_state: int,
+    random_state: Optional[int] = 1234,
 ):
     # Run scrublet
     logger.info("Running Scrublet for doublet detection.")

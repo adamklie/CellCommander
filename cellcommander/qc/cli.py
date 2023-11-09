@@ -29,7 +29,8 @@ class CLI(AbstractCLI):
         try:
             args.input_file = os.path.expanduser(args.input_file)
             args.output_dir = os.path.expanduser(args.output_dir)
-            args.metadata_file = os.path.expanduser(args.metadata_file)
+            if args.metadata_file:
+                args.metadata_file = os.path.expanduser(args.metadata_file)
         except TypeError:
             raise ValueError("Problem with provided input and output paths.")
 
@@ -54,7 +55,7 @@ class CLI(AbstractCLI):
         # Do the opposite for nmads if the strategy is "threshold"
         elif args.filtering_strategy == "threshold":
             args.total_counts_nmads = None
-            args.n_features_by_counts_nmads = None
+            args.n_features_nmads = None
             args.pct_counts_in_top_features_nmads = None
             args.pct_counts_mt_nmads = None
             args.ns_nmads = None
@@ -66,10 +67,10 @@ class CLI(AbstractCLI):
                 args.total_counts_nmads > 0
             ), "--total_counts_nmads must be a positive number."
 
-        if args.n_features_by_counts_nmads is not None:
+        if args.n_features_nmads is not None:
             assert (
-                args.n_features_by_counts_nmads > 0
-            ), "--n_features_by_counts_nmads must be a positive number."
+                args.n_features_nmads > 0
+            ), "--n_features_nmads must be a positive number."
 
         if args.n_top_features is not None:
             assert (

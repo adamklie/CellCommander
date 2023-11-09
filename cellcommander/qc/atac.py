@@ -251,7 +251,7 @@ def atac_qc(
         adata.obs.rename(
             columns={
                 "n_genes_by_counts": "n_features_by_counts",
-                "pct_counts_in_top_20_genes": "pct_counts_in_top_20_features",
+                f"pct_counts_in_top_{n_top_features}_genes": "pct_counts_in_top_20_features",
             },
             inplace=True,
         )
