@@ -8,7 +8,6 @@ import sys
 import cellcommander
 from cellcommander.base_cli import AbstractCLI, get_version
 from cellcommander.annotate.checkpoint import create_workflow_hashcode
-from cellcommander.annotate.run import run_annotate
 
 
 class CLI(AbstractCLI):
@@ -99,6 +98,7 @@ def main(args):
     args, file_handler = setup_and_logging(args)
 
     # Run the tool.
+    from cellcommander.annotate.run import run_annotate
     run_annotate(args)
     file_handler.close()
 

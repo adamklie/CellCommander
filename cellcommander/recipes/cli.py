@@ -8,7 +8,6 @@ import sys
 import cellcommander
 from cellcommander.base_cli import AbstractCLI, get_version
 from cellcommander.recipes.checkpoint import create_workflow_hashcode
-from cellcommander.recipes.run import run_recipes
 
 
 class CLI(AbstractCLI):
@@ -100,6 +99,7 @@ def main(args):
     args, file_handler = setup_and_logging(args)
 
     # Run the tool.
+    from cellcommander.recipes.run import run_recipes
     run_recipes(args)
     file_handler.close()
 

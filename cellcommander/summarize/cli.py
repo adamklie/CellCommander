@@ -8,7 +8,6 @@ import sys
 import cellcommander
 from cellcommander.base_cli import AbstractCLI, get_version
 from cellcommander.summarize.checkpoint import create_workflow_hashcode
-from cellcommander.summarize.run import run_summarize
 
 
 class CLI(AbstractCLI):
@@ -96,6 +95,7 @@ def main(args):
     args, file_handler = setup_and_logging(args)
 
     # Run the tool.
+    from cellcommander.summarize.run import run_summarize
     run_summarize(args)
     file_handler.close()
 
