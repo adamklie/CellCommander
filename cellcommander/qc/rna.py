@@ -112,7 +112,7 @@ def rna_qc(
     else:
         logger.info(
             "Defining general feature-based outliers based on "
-            f"{total_counts_nmads} MADs for total counts,"
+            f"{total_counts_nmads} MADs for total counts, "
             f"{n_genes_by_counts_nmads} MADs for number of genes by counts, "
             f" and {pct_counts_in_top_genes_nmads} MADs for percentage of counts in top genes"
         )

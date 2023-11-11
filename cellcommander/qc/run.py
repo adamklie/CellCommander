@@ -58,11 +58,19 @@ def run_qc(args: argparse.Namespace):
             describe_mudata(data)
 
         else:
-            # Read in single modality h5 file
-            logger.info("Reading single modality input using Scanpy or Muon. Expecting to return an AnnData object.")
-            data = ac.read_10x_h5(args.input_file)
-            data.var_names_make_unique()
-            describe_anndata(data)
+            if args.mode == "rna":
+                # Read in single modality h5 file
+                logger.info("Reading single modality RNA input using Scanpy. Expecting to return an AnnData object.")
+                data = sc.read_10x_h5(args.input_file)
+                data.var_names_make_unique()
+                describe_anndata(data)
+
+            elif args.mode == "atac":
+                # Read in single modality h5 file
+                logger.info("Reading single modality ATAC input using Muon. Expecting to return an AnnData object.")
+                data = ac.read_10x_h5(args.input_file)
+                data.var_names_make_unique()
+                describe_anndata(data)
 
         # If rna
         if args.mode == "rna":
@@ -145,7 +153,7 @@ def run_qc(args: argparse.Namespace):
                 adata=adata,
                 n_top_genes=args.n_top_features,
                 total_counts_nmads=args.total_counts_nmads,
-                n_genes_by_counts_nmads=args.n_features_by_counts_nmads,
+                n_genes_by_counts_nmads=args.n_features_nmads,
                 pct_counts_in_top_genes_nmads=args.pct_counts_in_top_features_nmads,
                 pct_counts_mt_nmads=args.pct_counts_mt_nmads,
                 pct_counts_mt_hi=args.pct_counts_mt_hi,
