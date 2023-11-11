@@ -197,9 +197,10 @@ def get_tss_annotation():
     )
     filter = annot["Chromosome/scaffold name"].str.contains("CHR|GL|JH|MT")
     annot = annot[~filter]
-    annot["Chromosome/scaffold name"] = annot["Chromosome/scaffold name"].str.replace(
-        r"(\b\S)", r"chr\1"
-    )
+    #annot["Chromosome/scaffold name"] = annot["Chromosome/scaffold name"].str.replace(
+    #    r"(\b\S)", r"chr\1"
+    #)
+    annot["Chromosome/scaffold name"] = "chr" + annot["Chromosome/scaffold name"].astype(str)
     annot.columns = ["Chromosome", "Start", "Strand", "Gene", "Transcript_type"]
     annot = annot[annot.Transcript_type == "protein_coding"]
     annot = annot[
@@ -335,7 +336,7 @@ def atac_qc(
             is_outlier(adata, "nucleosome_signal", ns_nmads)
         ) | (is_outlier(adata, "tss_score", tss_nmads))
 
-    return adata
+    return
 
 
 def atac_outlier_filter(

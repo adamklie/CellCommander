@@ -111,8 +111,10 @@ def run_select_features(args: argparse.Namespace):
             mtx = adata.layers[args.layer].A
             if is_counts(mtx) or is_mostly_counts(mtx, percent=0.95):
                 logger.info(f"Data in layer {args.layer} is likely counts, normalizing for mean and dispersion calculation")
-                sc.pp.normalize_total(adata, target_sum=1e4, layer=args.layer)
-            sc.pp.highly_variable_genes(adata, layer=args.layer)
+                #sc.pp.normalize_total(adata, layer=args.layer)
+                sc.pp.highly_variable_genes(adata, layer=args.layer, n_top_genes=3000, flavor="cell_ranger")
+            else:
+                sc.pp.highly_variable_genes(adata, layer=args.layer)
         highly_var_cols = [c for c in adata.var.columns if "highly_variable" in c]
         _, axes = plt.subplots(
             nrows=1,
