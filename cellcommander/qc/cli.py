@@ -8,7 +8,6 @@ import sys
 import cellcommander
 from cellcommander.base_cli import AbstractCLI, get_version
 from cellcommander.qc.checkpoint import create_workflow_hashcode
-from cellcommander.qc.run import run_qc
 
 
 class CLI(AbstractCLI):
@@ -166,6 +165,7 @@ def main(args):
     args, file_handler = setup_and_logging(args)
 
     # Run the tool.
+    from cellcommander.qc.run import run_qc
     run_qc(args)
     file_handler.close()
 
