@@ -141,11 +141,11 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Minimum distance for UMAP.",
     )
     subparser.add_argument(
-        '--initial-clust-resolution',
+        '--clust-resolution',
         type=float,
-        default=consts.DEFAULT_INITIAL_CLUST_RESOLUTION,
-        dest="initial_clust_resolution",
-        help="Resolution for an initial clustering.",
+        default=consts.DEFAULT_CLUST_RESOLUTION,
+        dest="clust_resolution",
+        help="Resolution for clustering.",
     )
     subparser.add_argument(
         "--random-state",

@@ -74,8 +74,9 @@ def run_annotate(args: argparse.Namespace):
             adata_plot.obsm["X_pca"] = adata_plot.obsm[args.clust_dim_reduction]
             logger.info(f"Using {args.clust_dim_reduction} as .obsm['X_pca']")
             sc.pp.neighbors(adata_plot, use_rep="X_pca", n_neighbors=args.clust_n_neighbors, random_state=args.random_state, n_pcs=args.clust_n_components)
-            sc.tl.leiden(adata_plot, resolution=args.clust_resolution, random_state=args.random_state, key_added="annotate_clustering")
-            cluster_key = "annotate_clustering"
+            cluster_key = f"annotate_leiden_{args.clust_resolution}"
+            sc.tl.leiden(adata_plot, resolution=args.clust_resolution, random_state=args.random_state, key_added=cluster_key)
+
         else:
             logger.info(f"Using {args.cluster_key} as cluster key")
             cluster_key = args.cluster_key
@@ -107,7 +108,7 @@ def run_annotate(args: argparse.Namespace):
                         frameon=False,
                         cmap="Reds",  # or choose another color map e.g. from here: https://matplotlib.org/stable/tutorials/colors/colormaps.html
                     )
-                    plt.savefig(os.path.join(args.output_dir, "marker_plots", f"{ct}_markers.png"))
+                    plt.savefig(os.path.join(args.output_dir, "marker_plots", f"{ct}_markers_umap.png"))
                     plt.close()
 
             # Plot a dotplot of the markers
@@ -157,22 +158,20 @@ def run_annotate(args: argparse.Namespace):
             cluster_to_celltype = get_user_input(numerically_sorted_clusters, cell_types_to_choose_from)
 
             # Add the annotation to obs
-            adata_plot.obs["manual_cellid_annotation"] = adata_plot.obs[cluster_key].map(cluster_to_celltype)
+            adata_plot.obs[args.annotation_key] = adata_plot.obs[cluster_key].map(cluster_to_celltype)
 
             with plt.rc_context({"figure.figsize": (5, 5)}):
-                sc.pl.umap(adata_plot, color=["manual_cellid_annotation", cluster_key], legend_loc="on data", show=False)
-                plt.savefig(os.path.join(args.output_dir, f"manual_cellid_annotation_umap.png"))
+                sc.pl.umap(adata_plot, color=[args.annotation_key, cluster_key], legend_loc="on data", show=False)
+                plt.savefig(os.path.join(args.output_dir, f"{args.annotation_key}umap.png"))
                 plt.close()
 
         # Save a tsv
-        metadata_cols = ['total_counts', 'pct_counts_mt', cluster_key, 'manual_cellid_annotation']
-        metadata_cols = [x for x in metadata_cols if x in adata_plot.obs.columns]
-        adata_plot.obs[metadata_cols].to_csv(os.path.join(args.output_dir, f"{args.output_prefix}_metadata.tsv"), sep="\t")
+        adata_plot.obs.to_csv(os.path.join(args.output_dir, f"{args.output_prefix}_metadata.tsv"), sep="\t")
 
         # Save the adata
         #del adata.uns[f"dea_{cluster_key}_filtered"]
         adata.obs[cluster_key] = adata_plot.obs[cluster_key]
-        adata.obs["manual_cellid_annotation"] = adata_plot.obs["manual_cellid_annotation"]
+        adata.obs[args.annotation_key] = adata_plot.obs[args.annotation_key]
         logger.info(
             f"Saving adata with cell identity annotations in `.obs` to {os.path.join(args.output_dir, f'{args.output_prefix}.h5ad')}"
         )

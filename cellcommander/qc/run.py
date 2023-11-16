@@ -71,7 +71,7 @@ def run_qc(args: argparse.Namespace):
                 data = ac.read_10x_h5(args.input_file)
                 data.var_names_make_unique()
                 describe_anndata(data)
-
+        
         # If rna
         if args.mode == "rna":
 
@@ -86,6 +86,7 @@ def run_qc(args: argparse.Namespace):
 
             # Sample level metrics
             metrics = ["n_genes_by_counts", "total_counts", "pct_counts_mt"]
+
         
         # If atac
         elif args.mode == "atac":
@@ -142,6 +143,13 @@ def run_qc(args: argparse.Namespace):
             ]
             adata.obs = adata.obs.merge(metadata, left_index=True, right_index=True)
     
+        # Add sample name to barcode with # in between
+        if args.sample_name is not None:
+            logger.info(f"Adding sample name {args.sample_name} to barcode")
+            logger.info(f"Before: {adata.obs.index[0]}")
+            adata.obs.index = args.sample_name + "#" + adata.obs.index
+            logger.info(f"After: {adata.obs.index[0]}")
+            
         # Run QC
         if args.mode == "rna":
             # Log mode
@@ -183,6 +191,14 @@ def run_qc(args: argparse.Namespace):
                 filtered_bc.to_series().to_csv(
                     filtered_bc_path, sep="\t", index=False, header=False
                 )
+
+                # Filter out any user defined lists of barcodes
+                if args.barcode_exclusion_list_paths is not None:
+                    for path in args.barcode_exclusion_list_paths:
+                        logger.info(f"Excluding barcodes from {path}")
+                        barcodes_to_filter = pd.read_csv(path, header=None)[0].tolist()
+                        adata = adata[~adata.obs.index.isin(barcodes_to_filter), :]
+                        logger.info(f"Number of cells after filtering: {adata.n_obs}")
 
                 # Plot QC metrics after filtering
                 logger.info("Generating post-filtering QC plots")

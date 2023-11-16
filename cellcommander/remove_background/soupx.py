@@ -25,55 +25,57 @@ def run_soupx(
     adata: AnnData,
     adata_raw: AnnData,
     soupx_markers: pd.DataFrame,
-    layer: Optional[str] = None,
-    initial_clust_num_hvgs: int = 3000,
-    initial_clust_n_neighbors: int = 30,
-    initial_clust_n_components: int = 50,
-    initial_clust_resolution: float = 1,
+    layer: Optional[str] = "soupx_counts",
+    clust_num_hvgs: int = 3000,
+    clust_n_neighbors: int = 30,
+    clust_n_components: int = 50,
+    clust_resolution: float = 1,
     umap_min_distance: float = 0.3,
     random_state: int = 1234,
     outdir_path: str = ".",
 ):
     # Run initial clustering
-    logger.info("Performing nitial clustering for SoupX.")
+    logger.info("Performing initial clustering for SoupX.")
     adata_pp = adata.copy()
     
     # Normalize and log transform
+    logger.info("Normalizing and log transforming with ScanPy defaults.")
     sc.pp.filter_genes(adata_pp, min_cells=20)
     sc.pp.normalize_total(adata_pp)
     sc.pp.log1p(adata_pp)
     
     # Highly variable genes
-    logger.info(f"Selecting {initial_clust_num_hvgs} highly variable genes.")
-    sc.pp.highly_variable_genes(adata_pp, n_top_genes=initial_clust_num_hvgs)
+    logger.info(f"Selecting {clust_num_hvgs} highly variable genes with ScanPy default.")
+    sc.pp.highly_variable_genes(adata_pp, n_top_genes=clust_num_hvgs)
     adata_pp = adata_pp[:, adata_pp.var.highly_variable]
     
     # Dimensionality reduction
-    logger.info(f"Running dimensionality reduction with PCA "
-                f"and clustering with {initial_clust_n_neighbors} neighbors, {initial_clust_n_components} components, "
-                f"and resolution {initial_clust_resolution}.")
-    sc.pp.pca(adata_pp, n_comps=initial_clust_n_components, random_state=random_state)
-    sc.pp.neighbors(adata_pp, n_neighbors=initial_clust_n_neighbors, n_pcs=initial_clust_n_components, random_state=random_state)
-    sc.tl.leiden(adata_pp, key_added="soupx_groups", resolution=initial_clust_resolution, random_state=random_state)
+    logger.info(f"Running ScanPy dimensionality reduction with PCA "
+                f"and ScanPy clustering with {clust_n_neighbors} neighbors, {clust_n_components} components, "
+                f"and resolution {clust_resolution}.")
+    sc.pp.pca(adata_pp, n_comps=clust_n_components, random_state=random_state)
+    sc.pp.neighbors(adata_pp, n_neighbors=clust_n_neighbors, n_pcs=clust_n_components, random_state=random_state)
+    sc.tl.leiden(adata_pp, key_added=f"pre_soupx_leiden_{clust_resolution}", resolution=clust_resolution, random_state=random_state)
 
     # UMAP
+    logger.info(f"Running ScanPy UMAP with min_dist {umap_min_distance}.")
     sc.tl.umap(adata_pp, min_dist=umap_min_distance, random_state=random_state)
     with plt.rc_context():
-        sc.pl.umap(adata_pp, color=["soupx_groups"])
-        plt.savefig(os.path.join(outdir_path, "initial_soupx_groups_umap.png"))
+        sc.pl.umap(adata_pp, color=[f"pre_soupx_leiden_{clust_resolution}"])
+        plt.savefig(os.path.join(outdir_path, f"pre_soupx_leiden_{clust_resolution}_umap.png"))
         plt.close()
+
+    # Add variables to original AnnData
+    adata.obs[f"pre_soupx_leiden_{clust_resolution}"] = adata_pp.obs[f"pre_soupx_leiden_{clust_resolution}"]
 
     # Import libraries
     logger.info("Importing SoupX library.")
     SoupX = importr("SoupX")
     ro.r(f"set.seed({random_state})")
-
+    
     # Preprocess variables for SoupX
     logger.info("Preprocessing variables for SoupX.")
-    soupx_groups = adata_pp.obs["soupx_groups"]
-    adata.obs["soupx_groups"] = adata_pp.obs["soupx_groups"]
-    adata.obsm["soupx_pca"] = adata_pp.obsm["X_pca"]
-    adata.obsm["soupx_umap"] = adata_pp.obsm["X_umap"]
+    soupx_groups = adata_pp.obs[f"pre_soupx_leiden_{clust_resolution}"]
     metadata = pd.DataFrame(adata_pp.obsm["X_umap"])
     metadata.columns = ["RD1", "RD2"]
     metadata["Cluster"] = soupx_groups.values
@@ -110,7 +112,7 @@ def run_soupx(
     ro.globalenv["outdir_path"] = outdir_path
 
     # Run SoupX!
-    logger.info("Running SoupX.")
+    logger.info(f"Running SoupX and saving RDS file to {os.path.join(outdir_path, 'soupx.rds')}.")
     ro.r('''
         Genes1 <- c(soupx_markers[[1]])
         Genes2 <- c(soupx_markers[[2]])
@@ -129,7 +131,7 @@ def run_soupx(
         soupc = calculateContaminationFraction(soupc, list(A=Genes1, B=Genes2, C=Genes3, D=Genes4), useToEst=useToEst)
         contam_frac = 100*exp(coef(soupc$fit))[[1]]
         out = adjustCounts(soupc, roundToInt = TRUE)
-        saveRDS(soupc, file = file.path(outdir_path, "soupc.rds"))
+        saveRDS(soupc, file = file.path(outdir_path, "soupx.rds"))
     ''')
     
     # Grab the output
@@ -160,27 +162,32 @@ def run_soupx(
     soupx_out_dict["top_10_genes"] = adata.var.sort_values("num_soupx_zeroed_cells", ascending=False).head(10).index.tolist()
 
     # Add in the new counts
+    logger.info(f"Adding SoupX counts to AnnData, will be in '.X' and '{layer}' layers.")
     adata.layers["counts"] = adata.X
     adata.layers[layer] = out_py.T
     adata.X = adata.layers[layer]
 
     # Reprocess after SoupX
-    logging.info("Reprocessing after SoupX to generate UMAP and clustering.")
+    logging.info("Reprocessing after SoupX to generate clustering and UMAP with ScanPy. Useful to compare to pre-SoupX.")
     adata_pp = adata.copy()
     adata_pp.X = adata.layers[layer]
     sc.pp.filter_genes(adata_pp, min_cells=20)
     sc.pp.normalize_total(adata_pp)
     sc.pp.log1p(adata_pp)
-    sc.pp.highly_variable_genes(adata_pp, n_top_genes=initial_clust_num_hvgs)
+    sc.pp.highly_variable_genes(adata_pp, n_top_genes=clust_num_hvgs)
     adata_pp = adata_pp[:, adata_pp.var.highly_variable]
     sc.pp.pca(adata_pp)
-    sc.pp.neighbors(adata_pp, n_neighbors=initial_clust_n_neighbors, n_pcs=initial_clust_n_components, random_state=random_state)
-    sc.tl.leiden(adata_pp, key_added="post_soupx_groups", resolution=initial_clust_resolution, random_state=random_state)
+    sc.pp.neighbors(adata_pp, n_neighbors=clust_n_neighbors, n_pcs=clust_n_components, random_state=random_state)
+    sc.tl.leiden(adata_pp, key_added=f"post_soupx_leiden_{clust_resolution}", resolution=clust_resolution, random_state=random_state)
     sc.tl.umap(adata_pp, min_dist=umap_min_distance, random_state=random_state)
     with plt.rc_context():
-        sc.pl.umap(adata_pp, color=["post_soupx_groups"])
-        plt.savefig(os.path.join(outdir_path, "post_soupx_groups_umap.png"))
+        sc.pl.umap(adata_pp, color=[f"post_soupx_leiden_{clust_resolution}"])
+        plt.savefig(os.path.join(outdir_path, f"post_soupx_leiden_{clust_resolution}_umap.png"))
         plt.close()
 
+    # Add variables to original AnnData
+    adata.obs[f"post_soupx_leiden_{clust_resolution}"] = adata_pp.obs[f"post_soupx_leiden_{clust_resolution}"]
+
     # Save the dict
+    logger.info(f"Dumping SoupX stats to {os.path.join(outdir_path, 'soupx_stats.pickle')}.")
     pickle.dump(soupx_out_dict, open(os.path.join(outdir_path, f"soupx_stats.pickle"), "wb"))

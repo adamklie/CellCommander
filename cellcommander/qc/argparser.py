@@ -50,6 +50,16 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Prefix for output files. " "If not provided, the prefix will be 'qc'.",
     )
     subparser.add_argument(
+        "--sample_name",
+        nargs=None,
+        type=str,
+        dest="sample_name",
+        required=False,
+        default=None,
+        help="Name of the sample. "
+        "Will be prepended to barcode if provided. ",
+    )
+    subparser.add_argument(
         "--metadata_path",
         nargs=None,
         type=str,
