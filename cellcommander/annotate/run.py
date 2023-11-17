@@ -123,30 +123,33 @@ def run_annotate(args: argparse.Namespace):
                 plt.savefig(os.path.join(args.output_dir, "marker_gene_dotplot.png"))
                 plt.close()
 
-            # Get quantified marker genes and plot a dotplot
-            sc.tl.rank_genes_groups(
-                adata_plot, groupby=cluster_key, method="wilcoxon", key_added=f"dea_{cluster_key}"
-            )
-            # Filter these results to genes that are highly specific to each cluster
-            sc.tl.filter_rank_genes_groups(
-                adata_plot,
-                min_in_group_fraction=0.2,
-                max_out_group_fraction=0.2,
-                key=f"dea_{cluster_key}",
-                key_added=f"dea_{cluster_key}_filtered",
-            )
-            with plt.rc_context():
-                # Dot plot those markers
-                logger.info(f"Plotting dotplot of DEA markers to {os.path.join(args.output_dir, f'dea_{cluster_key}_filtered_dotplot.png')}")
-                sc.pl.rank_genes_groups_dotplot(
-                    adata_plot,
-                    groupby=cluster_key,
-                    standard_scale="var",
-                    n_genes=5,
-                    key=f"dea_{cluster_key}_filtered",
+            if args.skip_dea:
+                logger.info("Skipping differential expression analysis")
+            else:
+                # Get quantified marker genes and plot a dotplot
+                sc.tl.rank_genes_groups(
+                    adata_plot, groupby=cluster_key, method="wilcoxon", key_added=f"dea_{cluster_key}"
                 )
-                plt.savefig(os.path.join(args.output_dir, f"dea_{cluster_key}_filtered_dotplot.png"))
-                plt.close()
+                # Filter these results to genes that are highly specific to each cluster
+                sc.tl.filter_rank_genes_groups(
+                    adata_plot,
+                    min_in_group_fraction=0.2,
+                    max_out_group_fraction=0.2,
+                    key=f"dea_{cluster_key}",
+                    key_added=f"dea_{cluster_key}_filtered",
+                )
+                with plt.rc_context():
+                    # Dot plot those markers
+                    logger.info(f"Plotting dotplot of DEA markers to {os.path.join(args.output_dir, f'dea_{cluster_key}_filtered_dotplot.png')}")
+                    sc.pl.rank_genes_groups_dotplot(
+                        adata_plot,
+                        groupby=cluster_key,
+                        standard_scale="var",
+                        n_genes=5,
+                        key=f"dea_{cluster_key}_filtered",
+                    )
+                    plt.savefig(os.path.join(args.output_dir, f"dea_{cluster_key}_filtered_dotplot.png"))
+                    plt.close()
 
         if "manual" in args.methods:
             logger.info("Running manual annotation, will prompt user to annotate clusters")
@@ -162,7 +165,7 @@ def run_annotate(args: argparse.Namespace):
 
             with plt.rc_context({"figure.figsize": (5, 5)}):
                 sc.pl.umap(adata_plot, color=[args.annotation_key, cluster_key], legend_loc="on data", show=False)
-                plt.savefig(os.path.join(args.output_dir, f"{args.annotation_key}umap.png"))
+                plt.savefig(os.path.join(args.output_dir, f"{args.annotation_key}_umap.png"))
                 plt.close()
 
         # Save a tsv

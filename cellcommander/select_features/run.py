@@ -31,6 +31,7 @@ from cellcommander.select_features import consts
 from cellcommander.select_features.scanpy import run_seurat, run_cell_ranger, run_seurat_v3
 from cellcommander.select_features.deviance import run_deviance
 from cellcommander.select_features.signac import run_signac
+from cellcommander.select_features.snapatac2 import run_snapatac2
 from cellcommander.select_features.utils import is_counts, is_mostly_counts
 
 logger = logging.getLogger("cellcommander")
@@ -105,6 +106,12 @@ def run_select_features(args: argparse.Namespace):
                 layer=args.layer,
                 key_added="highly_variable_signac",
             )
+        if "snapatac2" in args.methods:
+            run_snapatac2(
+                adata=adata,
+                num_features=args.n_top_genes,
+            )
+            adata.var["highly_variable_snapatac2"] = adata.var["selected"].copy()
 
         # Plot means vs dispersions for each method
         if "means" not in adata.var.columns or "dispersions" not in adata.var.columns:

@@ -53,26 +53,34 @@ def run_merge(args: argparse.Namespace):
     try:
             
         # Read in the AnnData(s)
+        if args.names is None:
+            args.names = [str(i) for i in range(len(args.input_files))]
+            logger.info("No sample names provided. Using indices as names.")
+        if args.make_bcs_unique:
+            logger.info("Making barcodes unique by prepending sample names.")
         if len(args.input_files) > 1:
             logger.info("Reading in multiple AnnData objects.")
-            # Read in samples
             adata_list = []
             samples = []
             for i, input_file in enumerate(args.input_files):
-                if args.names is not None:
-                    sample = args.names[i]
-                else:
-                    sample = input_file.split("/")[-4]
-                logger.info(f"Reading in AnnData for sample: {sample}.")
+                sample = args.names[i]
+                logger.info(f"Reading in AnnData for sample {sample}")
                 adata = sc.read_h5ad(input_file)
                 describe_anndata(adata)
-                adata.obs.index = sample + "#" + adata.obs.index
-                adata_cp = sc.AnnData(adata.layers[args.layer].copy(), obs=adata.obs.copy(), var=adata.var.copy())
+                if args.make_bcs_unique:
+                    logger.info(f"Adding sample name {sample} to barcode")
+                    adata.obs.index = sample + "#" + adata.obs.index
+                if args.layer is None:
+                    logger.info("No layer provided. Assuming counts are in adata.X.")
+                    adata_cp = sc.AnnData(adata.X.copy(), obs=adata.obs.copy(), var=adata.var.copy())
+                else:
+                    logger.info(f"Using layer {args.layer} as counts.")
+                    adata_cp = sc.AnnData(adata.layers[args.layer].copy(), obs=adata.obs.copy(), var=adata.var.copy())
                 adata_list.append(adata_cp)
                 samples.append(sample)
 
             # Concat samples
-            logger.info(f"Concatenating AnnData objects for samples: {samples}.")
+            logger.info("Concatenating AnnData objects for samples")
             adata_concat = ad.concat(adata_list, label=args.names_key, keys=samples)
             del adata_list, adata, adata_cp
 
@@ -85,7 +93,8 @@ def run_merge(args: argparse.Namespace):
         adata_concat.raw = adata_concat.copy()
 
         # Save counts in adata_concat.layers["counts"]
-        adata_concat.layers[args.layer] = adata_concat.X.copy()
+        if args.layer is not None:
+            adata_concat.layers[args.layer] = adata_concat.X.copy()
 
         # Save the adata
         logger.info(

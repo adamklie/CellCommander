@@ -4,6 +4,7 @@ import time
 import logging
 import argparse
 from tqdm.auto import tqdm
+import pandas as pd
 import snapatac2 as snap
 import scanpy as sc
 
@@ -14,6 +15,7 @@ logger = logging.getLogger("cellcommander")
 def single_sample_recipe(
     frag_file: str,
     outdir_path: str,
+    sample_name: str = None,
     bin_size: int = 500,
     num_features: int = 50000,
     min_load_tsse: int = 1,
@@ -26,6 +28,7 @@ def single_sample_recipe(
     low_memory: bool = True,
     clustering_resolution: float = 1.0,
     gene_activity: bool = True,
+    metadata: pd.DataFrame = None,
     save_intermediate: bool = False,
 ):
 
@@ -44,9 +47,22 @@ def single_sample_recipe(
         low_memory=low_memory,
     )
 
+    # Add sample name to barcode with # in between
+    if sample_name is not None:
+        logger.info(f"Adding sample name {sample_name} to barcode")
+        logger.info(f"Before: {adata.obs.index[0]}")
+        adata.obs.index = sample_name + "#" + adata.obs.index
+        logger.info(f"After: {adata.obs.index[0]}")
+        logger.info("If passing in metadata, make sure to add sample name to barcode column as well")
+
     # Plot TSSe distribution vs number of fragments
     logger.info("Plotting TSSe distribution vs number of fragments")
     snap.pl.tsse(adata, interactive=False, out_file=os.path.join(outdir_path, "nfrag_vs_tsse.png"))
+
+    # Save the processed data
+    if save_intermediate:
+        logger.info("Saving the qc data prior to filtering")
+        adata.write(os.path.join(outdir_path, f"qc.h5ad"))
 
     # Filter out low quality cells
     logger.info(f"Filtering out low quality cells with tsse<{min_tsse} and min_num_fragments<{min_num_fragments}, max_num_fragments>{max_num_fragments}")
@@ -67,11 +83,6 @@ def single_sample_recipe(
     logger.info("Running scrublet")
     snap.pp.scrublet(adata)
 
-    # Save the processed data
-    if save_intermediate:
-        logger.info("Saving the qc data prior to doublet filtering")
-        adata.write(os.path.join(outdir_path, f"qc.h5ad"))
-
     # Filter out doublets
     logger.info("Filtering out doublets")
     snap.pp.filter_doublets(adata)
@@ -79,6 +90,21 @@ def single_sample_recipe(
     # Report number of cells after filtering
     logger.info(f"Number of cells after filtering doublets: {adata.shape[0]}")
     
+    # Add in metadata if passed in
+    logger.info("Subsetting data to metadata if passed in")
+    if metadata is not None:
+        num_intersecting_cells = len(set(metadata.index).intersection(set(adata.obs.index)))
+        logger.info(f"Number of cells found in metadata: {num_intersecting_cells}")
+
+        # Subset the object to only include cells in the metadata
+        adata = adata[adata.obs.index.isin(metadata.index)]
+        
+        # Add in the metadata
+        adata.obs = adata.obs.merge(metadata, left_index=True, right_index=True, suffixes=("", "_rna"))
+
+        # Check
+        logger.info(f"Number of cells after subsetting to metadata: {adata.shape[0]}")
+
     # Run the spectral embedding
     logger.info("Running spectral embedding")
     snap.tl.spectral(adata)

@@ -67,6 +67,16 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Name of the key in the AnnData.obs to use for integration. ",
     )
     subparser.add_argument(
+        "--make-bcs-unique",
+        dest="make_bcs_unique",
+        action="store_true",
+        help="Including the flag --make-bcs-unique will make the barcodes unique "
+        "by appending the sample name to the barcode. "
+        "This is useful if you have multiple samples with the same barcodes. "
+        "If you do not have multiple samples with the same barcodes, "
+        "you should not use this flag. "
+    )
+    subparser.add_argument(
         "--layer",
         nargs=None,
         type=str,

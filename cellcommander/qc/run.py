@@ -285,6 +285,9 @@ def run_qc(args: argparse.Namespace):
             sc.pp.filter_genes(adata, min_cells=args.min_cells_per_feature)
             logger.info(f"Number of genes after filtering: {adata.n_vars}")
 
+        # Add counts to layers
+        adata.layers["counts"] = adata.X.copy()
+        
         # Save the filtered adata
         logger.info(
             f"Saving filtered adata to {os.path.join(args.output_dir, f'{args.output_prefix}.h5ad')}"

@@ -145,6 +145,12 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Resolution for initial clustering if --cluster-key is not provided.",
     )
     subparser.add_argument(
+        "--skip-dea",
+        dest="skip_dea",
+        action="store_true",
+        help="Including the flag --skip-dea will skip differential expression analysis.",
+    )
+    subparser.add_argument(
         "--random-state",
         nargs=None,
         type=int,

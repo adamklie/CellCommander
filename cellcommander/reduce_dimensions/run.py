@@ -14,6 +14,7 @@ import muon as mu
 import pandas as pd
 import psutil
 import scanpy as sc
+import snapatac2 as snap
 from mudata import MuData
 from anndata import AnnData
 
@@ -32,7 +33,7 @@ from cellcommander.reduce_dimensions import consts
 from cellcommander.reduce_dimensions.lsi import run_muon_lsi
 from cellcommander.reduce_dimensions.scanpy import run_scanpy_default
 from cellcommander.reduce_dimensions.seurat import run_seurat_default
-
+from cellcommander.reduce_dimensions.spectral import run_snapatac2_spectral
 logger = logging.getLogger("cellcommander")
 
 
@@ -94,6 +95,30 @@ def run_reduce_dimensions(args: argparse.Namespace):
 
             # Final dimensionality reduction
             adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_lsi"]
+
+        elif "spectral" == args.method:
+            run_snapatac2_spectral(
+                adata=adata_pp,
+                features_key=args.variable_features_key,
+                n_comps=args.n_components,
+                random_state=args.random_state,
+            )
+
+            # Remove components if specified
+            if args.components_to_remove is not None:
+                logger.info(f"Removing components {args.components_to_remove} from spectral, {adata_pp.obsm['X_spectral'].shape[1]} components total to start")
+                adata_pp.obsm['X_spectral'] = np.delete(adata_pp.obsm['X_spectral'], args.components_to_remove, axis=1)
+                logger.info(f"Removed components {args.components_to_remove} from spectral, {adata_pp.obsm['X_spectral'].shape[1]} components total remaining")
+                n_components = args.n_components - len(args.components_to_remove)
+            else:
+                n_components = args.n_components
+
+            # Run UMAP
+            logger.info(f"Running UMAP on spectral embeddings using SnapATAC2 implementation")
+            snap.tl.umap(adata, use_rep="X_spectral", random_state=args.random_state)
+
+            # Final dimensionality reduction
+            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_spectral"]
 
         elif "scanpy_default" == args.method:
             logger.info("Using ScanPy to run PCA on the data")
