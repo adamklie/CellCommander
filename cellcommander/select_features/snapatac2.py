@@ -20,5 +20,5 @@ def run_snapatac2(
     adata: AnnData,
     num_features: int = 50000,
 ):
-    logger.info("Running Seurat feature selection with ScanPy implementation (sc.pp.highly_variable_genes).")
+    logger.info("Running SnapATAC2 feature selection")
     snap.pp.select_features(adata, n_features=num_features)

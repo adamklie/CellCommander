@@ -5,7 +5,7 @@ import os
 
 import numpy as np
 import matplotlib
-import cellcommander.snapatac2 as snap
+import snapatac2 as snap
 from anndata import AnnData
 
 matplotlib.use("Agg")
@@ -24,4 +24,4 @@ def run_snapatac2_spectral(
 ):
     logger.info("Running snapatac2 default dimensionality reduction.")
     logger.info("This assumes that '.X' is the layer to use.")
-    snap.tl.spectral(adata, n_components=n_comps, features=features_key, random_state=random_state)
+    snap.tl.spectral(adata, n_comps=n_comps, features=features_key, random_state=random_state)

@@ -54,7 +54,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         nargs=None,
         type=str,
         dest="method",
-        choices=["scanpy_default", "seurat_default", "seurat_sctransform", "signac_default", "lsi"],
+        choices=["scanpy_default", "seurat_default", "seurat_sctransform", "signac_default", "lsi", "spectral"],
         required=False,
         default="scanpy_default",
         help="Method to use for dimensionality reduction. "

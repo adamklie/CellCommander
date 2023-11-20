@@ -97,6 +97,12 @@ def run_reduce_dimensions(args: argparse.Namespace):
             adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_lsi"]
 
         elif "spectral" == args.method:
+            # Handle variable features
+            if args.variable_features_key is None:
+                logger.info(f"No variable features passed in, using all features")
+            else:
+                logger.info(f"Passing in variable features to SnapATAC2 from {args.variable_features_key}")
+            adata_pp = adata.copy()
             run_snapatac2_spectral(
                 adata=adata_pp,
                 features_key=args.variable_features_key,
@@ -115,7 +121,7 @@ def run_reduce_dimensions(args: argparse.Namespace):
 
             # Run UMAP
             logger.info(f"Running UMAP on spectral embeddings using SnapATAC2 implementation")
-            snap.tl.umap(adata, use_rep="X_spectral", random_state=args.random_state)
+            snap.tl.umap(adata_pp, use_rep="X_spectral", random_state=args.random_state)
 
             # Final dimensionality reduction
             adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_spectral"]

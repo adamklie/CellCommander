@@ -114,26 +114,32 @@ def run_select_features(args: argparse.Namespace):
             adata.var["highly_variable_snapatac2"] = adata.var["selected"].copy()
 
         # Plot means vs dispersions for each method
-        if "means" not in adata.var.columns or "dispersions" not in adata.var.columns:
-            mtx = adata.layers[args.layer].A
-            if is_counts(mtx) or is_mostly_counts(mtx, percent=0.95):
-                logger.info(f"Data in layer {args.layer} is likely counts, normalizing for mean and dispersion calculation")
-                #sc.pp.normalize_total(adata, layer=args.layer)
-                sc.pp.highly_variable_genes(adata, layer=args.layer, n_top_genes=3000, flavor="cell_ranger")
-            else:
-                sc.pp.highly_variable_genes(adata, layer=args.layer)
-        highly_var_cols = [c for c in adata.var.columns if "highly_variable" in c]
-        _, axes = plt.subplots(
-            nrows=1,
-            ncols=len(highly_var_cols),
-            figsize=(len(highly_var_cols) * 5, 5),
-        )
-        for i, col in enumerate(highly_var_cols):
-            ax = axes[i]
-            sns.scatterplot(data=adata.var, x="means", y="dispersions", hue=highly_var_cols[i], s=5, ax=ax)
-            ax.set_title(col)
-        plt.savefig(os.path.join(args.output_dir, f"means_vs_dispersion_scatterplots.png"))
-        plt.close()
+        if not args.skip_plotting:
+            if "means" not in adata.var.columns or "dispersions" not in adata.var.columns:
+                if args.layer is None:
+                    mtx = adata.X.A
+                else:
+                    mtx = adata.layers[args.layer].A
+                if is_counts(mtx) or is_mostly_counts(mtx, percent=0.95):
+                    logger.info(f"Data in layer {args.layer} is likely counts, using CellRanger flavor for mean and dispersion calculation")
+                    sc.pp.highly_variable_genes(adata, layer=args.layer, n_top_genes=3000, flavor="cell_ranger")
+                else:
+                    logger.info(f"Data in layer {args.layer} is likely normalized, using Seurat flavor for mean and dispersion calculation")
+                    sc.pp.highly_variable_genes(adata, layer=args.layer)
+            highly_var_cols = [c for c in adata.var.columns if "highly_variable" in c]
+            _, axes = plt.subplots(
+                nrows=1,
+                ncols=len(highly_var_cols),
+                figsize=(len(highly_var_cols) * 5, 5),
+            )
+            for i, col in enumerate(highly_var_cols):
+                ax = axes[i]
+                sns.scatterplot(data=adata.var, x="means", y="dispersions", hue=highly_var_cols[i], s=5, ax=ax)
+                ax.set_title(col)
+            plt.savefig(os.path.join(args.output_dir, f"means_vs_dispersion_scatterplots.png"))
+            plt.close()
+        else:
+            logger.info("Skipping plotting")
 
         # Save a tsv with all the highly variable annotations
         adata.var.to_csv(os.path.join(args.output_dir, f"feature_metadata.tsv"), sep="\t")
