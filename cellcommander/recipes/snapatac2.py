@@ -128,6 +128,7 @@ def single_sample_recipe(
     # Save updated data
     logger.info("Saving clustered data")
     adata.write(os.path.join(outdir_path, f"clustered.h5ad"))
+    adata.obs.to_csv(os.path.join(outdir_path, f"cell_metadata.tsv"), sep="\t")
 
     # Create a gene matrix
     if gene_activity:

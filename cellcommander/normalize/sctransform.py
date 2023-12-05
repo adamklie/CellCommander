@@ -93,7 +93,7 @@ def save_sctransform(
     adata: AnnData,
     outdir_path: str,
 ):
-    logger.info(f"Saving SCTransform normalized data to {os.path.join(outdir_path, 'tfidf_norm.h5ad')}")
+    logger.info(f"Saving SCTransform normalized data to {os.path.join(outdir_path, 'sctransform')}")
     X = adata.obsm["sctransform_scale_data"]
     X.to_csv(os.path.join(outdir_path, "sctransform_scale_data.csv"))    
     X.index.to_series().to_csv(os.path.join(outdir_path, "barcodes.tsv"), sep="\t", index=False, header=False)
