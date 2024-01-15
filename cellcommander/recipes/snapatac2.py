@@ -16,14 +16,12 @@ def single_sample_recipe(
     outdir_path: str,
     bin_size: int = 500,
     num_features: int = 50000,
-    min_load_tsse: int = 1,
     min_load_num_fragments: int = 500,
     min_tsse: int = 4,
     min_num_fragments: int = 1000,
     max_num_fragments: int = None,
     sorted_by_barcode: bool = True,
     chunk_size: int = 2000,
-    low_memory: bool = True,
     clustering_resolution: float = 1.0,
     gene_activity: bool = True,
     save_intermediate: bool = False,
@@ -36,16 +34,19 @@ def single_sample_recipe(
     logger.info("Loading in data using `import_data` function without file backing")
     adata = snap.pp.import_data(
         fragment_file=frag_file,
-        genome=snap.genome.hg38,
-        min_tsse=min_load_tsse,
+        chrom_sizes=snap.genome.hg38,
         min_num_fragments=min_load_num_fragments,
         sorted_by_barcode=sorted_by_barcode,
         chunk_size=chunk_size,
-        low_memory=low_memory,
+        n_jobs=-1,
     )
+
+    # Plot 
+    snap.pl.frag_size_distr(adata, interactive=False, out_file=os.path.join(outdir_path, "frag_size_distr.png"))
 
     # Plot TSSe distribution vs number of fragments
     logger.info("Plotting TSSe distribution vs number of fragments")
+    snap.metrics.tsse(adata, snap.genome.hg38)
     snap.pl.tsse(adata, interactive=False, out_file=os.path.join(outdir_path, "nfrag_vs_tsse.png"))
 
     # Filter out low quality cells
