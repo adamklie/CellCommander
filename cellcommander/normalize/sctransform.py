@@ -29,6 +29,10 @@ def run_sctransform(
     SeuratObject = importr("SeuratObject")
     Matrix = importr("Matrix")
     
+    # Modify gene names in adata to be compatible with Seurat (convert to "_" to "-")
+    logger.info("Converting gene names from '_' to '-' to be compatible with SCTransform.")
+    adata.var_names = adata.var_names.str.replace("_", "-")
+
     # Make a copy of the data to run SCTransform on
     adata_pp = adata.copy()
 

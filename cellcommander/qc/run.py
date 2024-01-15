@@ -78,11 +78,11 @@ def run_qc(args: argparse.Namespace):
             # Grab the RNA only
             if isinstance(data, MuData) and "rna" in data.mod:
                 adata = data.mod["rna"]
+                
+                # Keep only features that are genes, just in case
+                adata[:, adata.var["feature_types"] == "Gene Expression"]
             else:
                 adata = data
-
-            # Keep only features that are genes, just in case
-            adata[:, adata.var["feature_types"] == "Gene Expression"]
 
             # Sample level metrics
             metrics = ["n_genes_by_counts", "total_counts", "pct_counts_mt"]
@@ -94,11 +94,11 @@ def run_qc(args: argparse.Namespace):
             # Grab the ATAC only
             if isinstance(data, MuData) and "atac" in data.mod:
                 adata = data.mod["atac"]
+                
+                # Keep only features that are Peaks, just in case
+                adata[:, adata.var["feature_types"] == "Peaks"]
             else:
-                adata = data
-
-            # Keep only features that are Peaks, just in case
-            adata[:, adata.var["feature_types"] == "Peaks"]
+                adata = data 
 
             # Make sure we have a fragments file. TODO: Move to cli checks
             if "files" not in adata.uns:
@@ -141,7 +141,7 @@ def run_qc(args: argparse.Namespace):
             metadata.columns = [
                 c + "_" + args.metadata_source for c in metadata.columns
             ]
-            adata.obs = adata.obs.merge(metadata, left_index=True, right_index=True)
+            adata.obs = adata.obs.merge(metadata, left_index=True, right_index=True, how="left")
     
         # Add sample name to barcode with # in between
         if args.sample_name is not None:

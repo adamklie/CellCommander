@@ -51,13 +51,26 @@ def run_detect_doublets(args: argparse.Namespace):
     try:
         # Read in single h5 file
         logger.info(f"Reading h5 file from {args.input_file}")
-        adata = sc.read_h5ad(args.input_file)
+        if args.input_file.endswith(".h5ad"):
+            adata = sc.read_h5ad(args.input_file)
+        elif args.input_file.endswith(".h5"):
+            adata = sc.read_10x_h5(args.input_file)
+        else:
+            adata = sc.read(args.input_file)
+
+        # Make sure var_names are unique
         adata.var_names_make_unique()
         describe_anndata(adata)
+
+        # Add fragments file to adata.uns
+        if args.fragments_file is not None:
+            logger.info(f"Adding fragments file to adata.uns['files']['fragments']")
+            adata.uns["files"] = {"fragments": args.fragments_file}
 
         # Get a prelim clustering of the data for plotting
         logger.info("Generating preliminary clustering for plotting UMAP with scores on it.")
         adata_pp = adata.copy()
+        sc.pp.filter_cells(adata_pp, min_genes=200)
         sc.pp.filter_genes(adata_pp, min_cells=20)
         sc.pp.normalize_total(adata_pp)
         sc.pp.log1p(adata_pp)
