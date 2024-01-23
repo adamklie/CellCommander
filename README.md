@@ -63,7 +63,7 @@ Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so man
 
 - Determines how the matrix is normalized
 
-## `select-features`
+# `select-features`
 
 <aside>
 ⭐ This is a command line module for selecting columns of interest from an input cell x feature matrix.
