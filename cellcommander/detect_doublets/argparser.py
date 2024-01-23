@@ -66,6 +66,18 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "based on the --consensus-method argument. ",
     )
     subparser.add_argument(
+        "--fragments_file",
+        nargs=None,
+        type=str,
+        dest="fragments_file",
+        required=False,
+        default=None,
+        help="File containing fragment information. "
+        "Required if method is 'amulet' and adata.uns['files']['fragments'] is not set. "
+        "See https://bioconductor.org/packages/release/bioc/vignettes/scDblFinder/inst/doc/scATAC.html#the-clamulet-method "
+        "for more details. ",
+    )
+    subparser.add_argument(
         "--consensus-methods",
         nargs='+',
         type=str,
