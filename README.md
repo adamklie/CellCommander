@@ -1,6 +1,7 @@
 # CellCommander
-Common single cell analysis tasks made runnable with the command line. This tool is still under active development, so the dev branch is the best place to get the latest updates/working code.
+Common single cell analysis tasks made runnable with the command line. This tool is still under active development, so the `dev` branch is the best place to get the latest updates/working code.
 
+# Why?
 Single cell analysis is often characterized by “kitchensink” modeling (e.g. throwing everything at your data and seeing what sticks). Many of the most popular data analysis steps and methods are captured in these online books:
 
  - [Single-cell best practices — Single-cell best practices](https://www.sc-best-practices.org/preamble.html)
@@ -10,7 +11,7 @@ Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so man
 
 **My goal was to translate these methodologies into a tool that automates testing them out and running them end-to-end on a variety of data types.**
 
-## `qc`
+# `qc`
 
 <aside>
 ⭐ This is a command line module for performing initial QC and filtering of your cell x feature matrix.
@@ -28,7 +29,7 @@ Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so man
 - Determines how cell outliers are calculated
 - So far, it seems like MAD usually keeps a lot of low quality cells
 
-## `remove-background`
+# `remove-background`
 
 - Change initial clust
 - Must be a single modality (RNA) adata
@@ -40,7 +41,7 @@ Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so man
 - Saves the soupx object as an RDS
 - Saves statistics derived from the SoupX run in a pickle file
 
-## `detect-doublets`
+# `detect-doublets`
 
 <aside>
 ⭐ This is a command line module for identifying and filtering out doublets from your cell x feature matrix.
@@ -69,7 +70,7 @@ Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so man
 
 </aside>
 
-## `reduce-dimensions`
+# `reduce-dimensions`
 
 <aside>
 ⭐ This is a command line module for creating a dimensionality reduced version of an input cell x feature matrix.
@@ -82,28 +83,28 @@ Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so man
 
 - Determines what dimensionality reduction method to run
 
-## `annotate`
+# `annotate`
 
 <aside>
 ⭐ This is a command line module for annotating the cells with cell identity and state either manually or using prior knowledge.
 
 </aside>
 
-## `integrate*`
+# `integrate`
 
 <aside>
 ⭐ This is a command line module for *horizontally* integrating multiple input cell x feature matrices.
 
 </aside>
 
-## `joint-integrate`
+# `joint-integrate`
 
 <aside>
 ⭐ This is a command line module for **********vertically********** integrating multiple input cell x feature matrices.
 
 </aside>
 
-## `recipes`
+# `recipes`
 
 <aside>
 ⭐ This is a command line module for running pipelines.
