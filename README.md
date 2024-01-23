@@ -7,7 +7,7 @@ Single cell analysis is often characterized by “kitchensink” modeling (e.g. 
  - [Single-cell best practices — Single-cell best practices](https://www.sc-best-practices.org/preamble.html)
  - [Orchestrating Single-Cell Analysis with Bioconductor](https://bioconductor.org/books/3.12/OSCA/)
 
-Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so many of these methods easily accessible. However, these methods are still difficult to manipulate into pipelines that you can run for automated analysis of many samples.
+Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so many of these methods easily accessible, these methods are still difficult to manipulate into pipelines that you can run for automated analysis of many samples.
 
 **My goal was to translate these methodologies into a tool that automates testing them out and running them end-to-end on a variety of data types.**
 
