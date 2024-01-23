@@ -52,7 +52,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         nargs="+",
         type=str,
         dest="methods",
-        choices=["seurat", "seurat_v3", "cell_ranger", "deviance", "signac"],
+        choices=["seurat", "seurat_v3", "cell_ranger", "deviance", "signac", "snapatac2"],
         required=False,
         default="seurat",
         help="Method to use for normalization. "
@@ -145,6 +145,15 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         default=consts.DEFAULT_INITIAL_CLUST_RESOLUTION,
         dest="initial_clust_resolution",
         help="Resolution for initial clustering.",
+    )
+    subparser.add_argument(
+        '--skip-plotting',
+        dest="skip_plotting",
+        action="store_true",
+        help="Including the flag --skip-plotting will skip "
+        "plotting of the results. This will avoid computation of "
+        "dispersions and means if they are not already computed "
+        "which can be computationally expensive for large datasets.",
     )
     subparser.add_argument(
         "--random-state",

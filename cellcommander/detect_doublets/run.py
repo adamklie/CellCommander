@@ -49,25 +49,37 @@ def run_detect_doublets(args: argparse.Namespace):
     logger.info("Running detect_doublets command")
 
     try:
-            
         # Read in single h5 file
         logger.info(f"Reading h5 file from {args.input_file}")
-        adata = sc.read_h5ad(args.input_file)
+        if args.input_file.endswith(".h5ad"):
+            adata = sc.read_h5ad(args.input_file)
+        elif args.input_file.endswith(".h5"):
+            adata = sc.read_10x_h5(args.input_file)
+        else:
+            adata = sc.read(args.input_file)
+
+        # Make sure var_names are unique
         adata.var_names_make_unique()
         describe_anndata(adata)
+
+        # Add fragments file to adata.uns
+        if args.fragments_file is not None:
+            logger.info(f"Adding fragments file to adata.uns['files']['fragments']")
+            adata.uns["files"] = {"fragments": args.fragments_file}
 
         # Get a prelim clustering of the data for plotting
         logger.info("Generating preliminary clustering for plotting UMAP with scores on it.")
         adata_pp = adata.copy()
+        sc.pp.filter_cells(adata_pp, min_genes=200)
         sc.pp.filter_genes(adata_pp, min_cells=20)
         sc.pp.normalize_total(adata_pp)
         sc.pp.log1p(adata_pp)
-        sc.pp.highly_variable_genes(adata_pp, n_top_genes=3000)
+        sc.pp.highly_variable_genes(adata_pp, n_top_genes=args.clust_num_hvgs)
         adata_pp = adata_pp[:, adata_pp.var.highly_variable]
-        sc.pp.pca(adata_pp)
-        sc.pp.neighbors(adata_pp, n_neighbors=args.initial_clust_n_neighbors)
-        sc.tl.umap(adata_pp)
-        sc.tl.leiden(adata_pp, resolution=args.initial_clust_resolution)
+        sc.pp.pca(adata_pp, n_comps=args.clust_n_components, random_state=args.random_state)
+        sc.pp.neighbors(adata_pp, n_neighbors=args.clust_n_neighbors, n_pcs=args.clust_n_components, random_state=args.random_state)
+        sc.tl.umap(adata_pp, min_dist=args.umap_min_distance, random_state=args.random_state)
+        sc.tl.leiden(adata_pp, resolution=args.clust_resolution, random_state=args.random_state, key_added=f"pre_doublet_filter_leiden_{args.clust_resolution}")
 
         # Get the methods to run
         if args.method != "consensus":
@@ -99,8 +111,12 @@ def run_detect_doublets(args: argparse.Namespace):
             )
         
         if "cellranger" in methods:
-            logger.info("Adding cellranger predicted doublets from adata.obs['excluded_reason_cellranger']")
-            adata.obs["cellranger_predicted_doublet"] = (adata.obs["excluded_reason_cellranger"] == "1")
+            if "excluded_reason_cellranger" in adata.obs.columns:
+                logger.info("Adding cellranger predicted doublets from adata.obs['excluded_reason_cellranger']")
+                adata.obs["cellranger_predicted_doublet"] = (adata.obs["excluded_reason_cellranger"] == "1")
+            else:
+                logger.info("No cellranger predicted doublets column found, setting all to False")
+                adata.obs["cellranger_predicted_doublet"] = False
 
         # Get doublets based on the consensus strategy
         if args.method == "consensus":
@@ -118,12 +134,12 @@ def run_detect_doublets(args: argparse.Namespace):
         doublet_score_columns = [c for c in adata.obs.columns if "_score" in c]
         adata_pp.obs[doublet_score_columns + ["doublet_filter"]] = adata.obs[doublet_score_columns + ["doublet_filter"]]
         adata_pp.obs["doublet_filter"] = adata.obs["doublet_filter"].astype("category")
-        adata.obs["pre_doublet_filter_leiden"] = adata_pp.obs["leiden"]
+        adata.obs[f"pre_doublet_filter_leiden_{args.clust_resolution}"] = adata_pp.obs[f"pre_doublet_filter_leiden_{args.clust_resolution}"]
         logger.info("Plotting doublet scores on UMAP")
         with plt.rc_context():
             sc.pl.umap(
                 adata_pp,
-                color=["leiden"] + doublet_score_columns + ["doublet_filter"],
+                color=[f"pre_doublet_filter_leiden_{args.clust_resolution}"] + doublet_score_columns + ["doublet_filter"],
                 vmin=0,
                 vmax="p99", 
                 sort_order=False, 

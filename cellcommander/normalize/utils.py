@@ -21,6 +21,8 @@ def plot_against_raw(
 ):
     # Plot the side-by-side distribution of total counts before and after normalization
     _, axes = plt.subplots(1, 2, figsize=(10, 5))
+    if "total_counts" not in adata.obs.columns:
+        adata.obs["total_counts"] = adata.X.sum(1)
     p1 = sns.histplot(adata.obs["total_counts"], bins=100, kde=False, ax=axes[0])
     axes[0].set_title("Total raw counts across cells")
     norm_mat = adata.layers[layer_key] if layer_key is not None else adata.obsm[obsm_key]

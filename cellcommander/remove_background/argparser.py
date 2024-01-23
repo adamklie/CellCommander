@@ -16,8 +16,10 @@ def add_subparser_args(subparsers: argparse) -> argparse:
 
     subparser = subparsers.add_parser(
         "remove-background",
-        description="Remove background from scRNA-seq data.",
-        help="Run ambient and background RNA correction with SoupX.",
+        description="Correct for background (ambient) RNA in a scRNA-seq dataset.",
+        help="Run SoupX for ambient RNA removal on a passed in h5ad file. "
+        "Outputs a new h5ad file with corrected counts in .X and in a layer. "
+        "Also runs a preliminary clustering pre and post correction.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     subparser.add_argument(
@@ -46,7 +48,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         dest="output_prefix",
         required=False,
         default="remove_background",
-        help="Prefix for output files. " 
+        help="Prefix for output h5ad file. " 
         "If not provided, the prefix will be 'remove_background'.",
     )
     subparser.add_argument(
@@ -54,7 +56,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         nargs=None,
         type=str,
         dest="method",
-        choices=["soupx", "cellbender"],
+        choices=["soupx"],
         required=False,
         default="soupx",
         help="Method to use for background removal. "
@@ -68,7 +70,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         required=False,
         default=None,
         help="Path to a raw data file. "
-        "Needed for SoupX correction. ",
+        "This is needed for SoupX correction.",
     )
     subparser.add_argument(
         "--markers_path",
@@ -77,9 +79,9 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         dest="markers_path",
         required=False,
         default=None,
-        help="Path to a file containing a list of marker genes. "
-        "If provided, the list of marker genes will be used to "
-        "by soupx to remove background. "
+        help="Path to a tsv/csv file containing two columns named "
+        "'Gene' and 'Group'. This is currently hardcoded to only allow "
+        "for 4 groups (and exactly 4 groups!). This is needed for SoupX correction."
     )
     subparser.add_argument(
         "--layer",
@@ -88,48 +90,48 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         dest="layer",
         required=False,
         default="corrected_counts",
-        help="Layer in the AnnData to add removed counts to. "
+        help="Layer in the AnnData to add background removed counts to. "
         "If not provided, the counts will be added to the "
         "corrected_counts layer. ",
     )
     subparser.add_argument(
-        "--initial-clust-num-hvgs",
+        "--clust-num-hvgs",
         nargs=None,
         type=str,
-        dest="initial_clust_num_hvgs",
+        dest="clust_num_hvgs",
         required=False,
-        default=consts.DEFAULT_INITIAL_NUM_HVGS,
+        default=consts.DEFAULT_NUM_HVGS,
         help="Number of highly variable genes to use for "
-        "initial clustering. If not provided, 3000 "
+        "clustering pre and post correction. If not provided, 3000 "
         "highly variable genes will be used. ",
     )
     subparser.add_argument(
-        '--initial-clust-n-neighbors',
+        '--clust-n-neighbors',
         type=int,
-        default=consts.DEFAULT_INITIAL_N_NEIGHBORS,
-        dest="initial_clust_n_neighbors",
+        default=consts.DEFAULT_N_NEIGHBORS,
+        dest="clust_n_neighbors",
         help="Number of neighbors for kNN graph calculation.",
     )
     subparser.add_argument(
-        "--initial-clust-n-components",
+        "--clust-n-components",
         type=int,
-        default=consts.DEFAULT_INITIAL_N_COMPONENTS,
-        dest="initial_clust_n_components",
+        default=consts.DEFAULT_N_COMPONENTS,
+        dest="clust_n_components",
         help="Number of components to use for kNN graph calculation.",
     )
     subparser.add_argument(
-        '--initial-clust-resolution',
+        '--clust-resolution',
         type=float,
-        default=consts.DEFAULT_INITIAL_CLUST_RESOLUTION,
-        dest="initial_clust_resolution",
-        help="Resolution for an initial clustering.",
+        default=consts.DEFAULT_CLUST_RESOLUTION,
+        dest="clust_resolution",
+        help="Resolution for the clustering.",
     )
     subparser.add_argument(
         "--umap-min-distance",
         type=float,
         default=consts.DEFAULT_UMAP_MIN_DISTANCE,
         dest="umap_min_distance",
-        help="Minimum distance for UMAP.",
+        help="Minimum distance for UMAP visualization pre and post correction.",
     )
     subparser.add_argument(
         "--random-state",

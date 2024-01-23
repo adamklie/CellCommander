@@ -49,7 +49,6 @@ def run_remove_background(args: argparse.Namespace):
     logger.info("Running remove-background command")
 
     try:
-            
         # Read in single h5 file
         logger.info(f"Reading h5 file from {args.input_file}")
         adata = sc.read_h5ad(args.input_file)
@@ -58,7 +57,7 @@ def run_remove_background(args: argparse.Namespace):
 
         # Run menthods
         if "soupx" == args.method:
-            # Read in raw data and markers genes
+            # Read in raw data and markers
             logger.info(f"Reading raw h5 file from {args.input_file}")
             adata_raw = sc.read_10x_h5(args.raw_h5_path)
             adata_raw.var_names_make_unique()
@@ -72,10 +71,10 @@ def run_remove_background(args: argparse.Namespace):
                 adata_raw,
                 soupx_markers,
                 layer=args.layer,
-                initial_clust_num_hvgs=args.initial_clust_num_hvgs,
-                initial_clust_n_neighbors=args.initial_clust_n_neighbors,
-                initial_clust_n_components=args.initial_clust_n_components,
-                initial_clust_resolution=args.initial_clust_resolution,
+                clust_num_hvgs=args.clust_num_hvgs,
+                clust_n_neighbors=args.clust_n_neighbors,
+                clust_n_components=args.clust_n_components,
+                clust_resolution=args.clust_resolution,
                 umap_min_distance=args.umap_min_distance,
                 random_state=args.random_state,
                 outdir_path=args.output_dir,

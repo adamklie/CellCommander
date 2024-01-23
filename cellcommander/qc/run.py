@@ -71,21 +71,22 @@ def run_qc(args: argparse.Namespace):
                 data = ac.read_10x_h5(args.input_file)
                 data.var_names_make_unique()
                 describe_anndata(data)
-
+        
         # If rna
         if args.mode == "rna":
 
             # Grab the RNA only
             if isinstance(data, MuData) and "rna" in data.mod:
                 adata = data.mod["rna"]
+                
+                # Keep only features that are genes, just in case
+                adata[:, adata.var["feature_types"] == "Gene Expression"]
             else:
                 adata = data
 
-            # Keep only features that are genes, just in case
-            adata[:, adata.var["feature_types"] == "Gene Expression"]
-
             # Sample level metrics
             metrics = ["n_genes_by_counts", "total_counts", "pct_counts_mt"]
+
         
         # If atac
         elif args.mode == "atac":
@@ -93,11 +94,11 @@ def run_qc(args: argparse.Namespace):
             # Grab the ATAC only
             if isinstance(data, MuData) and "atac" in data.mod:
                 adata = data.mod["atac"]
+                
+                # Keep only features that are Peaks, just in case
+                adata[:, adata.var["feature_types"] == "Peaks"]
             else:
-                adata = data
-
-            # Keep only features that are Peaks, just in case
-            adata[:, adata.var["feature_types"] == "Peaks"]
+                adata = data 
 
             # Make sure we have a fragments file. TODO: Move to cli checks
             if "files" not in adata.uns:
@@ -140,8 +141,15 @@ def run_qc(args: argparse.Namespace):
             metadata.columns = [
                 c + "_" + args.metadata_source for c in metadata.columns
             ]
-            adata.obs = adata.obs.merge(metadata, left_index=True, right_index=True)
+            adata.obs = adata.obs.merge(metadata, left_index=True, right_index=True, how="left")
     
+        # Add sample name to barcode with # in between
+        if args.sample_name is not None:
+            logger.info(f"Adding sample name {args.sample_name} to barcode")
+            logger.info(f"Before: {adata.obs.index[0]}")
+            adata.obs.index = args.sample_name + "#" + adata.obs.index
+            logger.info(f"After: {adata.obs.index[0]}")
+            
         # Run QC
         if args.mode == "rna":
             # Log mode
@@ -183,6 +191,14 @@ def run_qc(args: argparse.Namespace):
                 filtered_bc.to_series().to_csv(
                     filtered_bc_path, sep="\t", index=False, header=False
                 )
+
+                # Filter out any user defined lists of barcodes
+                if args.barcode_exclusion_list_paths is not None:
+                    for path in args.barcode_exclusion_list_paths:
+                        logger.info(f"Excluding barcodes from {path}")
+                        barcodes_to_filter = pd.read_csv(path, header=None)[0].tolist()
+                        adata = adata[~adata.obs.index.isin(barcodes_to_filter), :]
+                        logger.info(f"Number of cells after filtering: {adata.n_obs}")
 
                 # Plot QC metrics after filtering
                 logger.info("Generating post-filtering QC plots")
@@ -269,6 +285,9 @@ def run_qc(args: argparse.Namespace):
             sc.pp.filter_genes(adata, min_cells=args.min_cells_per_feature)
             logger.info(f"Number of genes after filtering: {adata.n_vars}")
 
+        # Add counts to layers
+        adata.layers["counts"] = adata.X.copy()
+        
         # Save the filtered adata
         logger.info(
             f"Saving filtered adata to {os.path.join(args.output_dir, f'{args.output_prefix}.h5ad')}"

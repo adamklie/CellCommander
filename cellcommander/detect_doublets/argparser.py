@@ -66,6 +66,18 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "based on the --consensus-method argument. ",
     )
     subparser.add_argument(
+        "--fragments_file",
+        nargs=None,
+        type=str,
+        dest="fragments_file",
+        required=False,
+        default=None,
+        help="File containing fragment information. "
+        "Required if method is 'amulet' and adata.uns['files']['fragments'] is not set. "
+        "See https://bioconductor.org/packages/release/bioc/vignettes/scDblFinder/inst/doc/scATAC.html#the-clamulet-method "
+        "for more details. ",
+    )
+    subparser.add_argument(
         "--consensus-methods",
         nargs='+',
         type=str,
@@ -112,18 +124,43 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "By default, the AnnData object will be filtered. ",
     )
     subparser.add_argument(
-        '--initial-clust-n-neighbors',
-        type=int,
-        default=consts.DEFAULT_INITIAL_CLUST_N_NEIGHBORS,
-        dest="initial_clust_n_neighbors",
-        help="Number of neighbors for initial clustering.",
+        "--clust-num-hvgs",
+        nargs=None,
+        type=str,
+        dest="clust_num_hvgs",
+        required=False,
+        default=consts.DEFAULT_NUM_HVGS,
+        help="Number of highly variable genes to use for "
+        "clustering pre and post correction. If not provided, 3000 "
+        "highly variable genes will be used. ",
     )
     subparser.add_argument(
-        '--initial_clust_resolution',
+        '--clust-n-neighbors',
+        type=int,
+        default=consts.DEFAULT_N_NEIGHBORS,
+        dest="clust_n_neighbors",
+        help="Number of neighbors for kNN graph calculation.",
+    )
+    subparser.add_argument(
+        "--clust-n-components",
+        type=int,
+        default=consts.DEFAULT_N_COMPONENTS,
+        dest="clust_n_components",
+        help="Number of components to use for kNN graph calculation.",
+    )
+    subparser.add_argument(
+        '--clust-resolution',
         type=float,
-        default=consts.DEFAULT_INITIAL_CLUST_RESOLUTION,
-        dest="initial_clust_resolution",
-        help="Resolution for initial clustering.",
+        default=consts.DEFAULT_CLUST_RESOLUTION,
+        dest="clust_resolution",
+        help="Resolution for the clustering.",
+    )
+    subparser.add_argument(
+        "--umap-min-distance",
+        type=float,
+        default=consts.DEFAULT_UMAP_MIN_DISTANCE,
+        dest="umap_min_distance",
+        help="Minimum distance for UMAP visualization pre and post correction.",
     )
     subparser.add_argument(
         "--random-state",

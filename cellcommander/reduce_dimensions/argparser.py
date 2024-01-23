@@ -54,7 +54,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         nargs=None,
         type=str,
         dest="method",
-        choices=["scanpy_default", "seurat_default", "seurat_sctransform", "signac_default", "lsi"],
+        choices=["scanpy_default", "seurat_default", "seurat_sctransform", "signac_default", "lsi", "spectral"],
         required=False,
         default="scanpy_default",
         help="Method to use for dimensionality reduction. "
@@ -141,11 +141,11 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Minimum distance for UMAP.",
     )
     subparser.add_argument(
-        '--initial-clust-resolution',
+        '--clust-resolution',
         type=float,
-        default=consts.DEFAULT_INITIAL_CLUST_RESOLUTION,
-        dest="initial_clust_resolution",
-        help="Resolution for an initial clustering.",
+        default=consts.DEFAULT_CLUST_RESOLUTION,
+        dest="clust_resolution",
+        help="Resolution for clustering.",
     )
     subparser.add_argument(
         "--random-state",

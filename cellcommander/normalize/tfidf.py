@@ -78,7 +78,7 @@ def save_tfidf(
     outdir_path: str,
     layer_key: Optional[str] = "tfidf_norm",
 ):
-    logger.info(f"Saving tfidf normalized data to {os.path.join(outdir_path, 'tfidf_norm.h5ad')}")
+    logger.info(f"Saving tfidf normalized data to {os.path.join(outdir_path)}")
     X = adata.layers[layer_key]
     mmwrite(os.path.join(outdir_path, "mtx.mtx"), X)
     adata.obs.index.to_series().to_csv(os.path.join(outdir_path, "barcodes.tsv"), sep="\t", index=False, header=False)
