@@ -42,6 +42,28 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "If it does not exist, it will be created.",
     )
     subparser.add_argument(
+        "--sample_name",
+        nargs=None,
+        type=str,
+        dest="sample_name",
+        required=False,
+        default=None,
+        help="Name of the sample. "
+        "Will be prepended to barcode followed by '#' if provided. ",
+    )
+    subparser.add_argument(
+        "--metadata_path",
+        nargs=None,
+        type=str,
+        dest="metadata_path",
+        required=False,
+        default=None,
+        help="Path to a metadata file. "
+        "This is a tab-separated file that contains metadata for the cells. "
+        "The first column should be the barcodes. Will subset the data to only include cells in the metadata."
+        "If not provided, no metadata will be used.",
+    )
+    subparser.add_argument(
         "--method",
         nargs=None,
         type=str,

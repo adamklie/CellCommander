@@ -71,23 +71,33 @@ def run_recipes(args: argparse.Namespace):
         with open(os.path.join(args.output_dir, "params.yaml"), "w") as f:
             yaml.dump(params, f)
 
+        # Check if user passed in RNA metadata
+        if args.metadata_path is not None:
+            logger.info(f"Reading metadata from {args.metadata_path}, should have bcs that match in first column")
+            if args.metadata_path.endswith(".csv"):
+                metadata = pd.read_csv(args.metadata_path, index_col=0)
+            elif args.metadata_path.endswith(".tsv"):
+                metadata = pd.read_csv(args.metadata_path, sep="\t", index_col=0)
+        else:
+            metadata = None
+
         if args.method == "snapatac2":
             if args.mode == "single-sample":
                 single_sample_recipe(
                     frag_file=input_file,
                     outdir_path=args.output_dir,
+                    sample_name=args.sample_name,
                     bin_size=params["feature_selection"]["bin_size"],
                     num_features=params["feature_selection"]["num_features"],
-                    min_load_tsse=params["io"]["min_load_tsse"],
                     min_load_num_fragments=params["io"]["min_load_num_fragments"],
                     min_tsse=params["qc"]["min_tsse"],
                     min_num_fragments=params["qc"]["min_num_fragments"],
                     max_num_fragments=params["qc"]["max_num_fragments"],
                     sorted_by_barcode=params["io"]["sorted_by_barcode"],
                     chunk_size=params["io"]["chunk_size"],
-                    low_memory=params["io"]["low_memory"],
                     clustering_resolution=params["analysis"]["clustering_resolution"],
                     gene_activity=params["io"]["gene_activity"],
+                    metadata=metadata,
                     save_intermediate=params["io"]["save_intermediate"],
                 )
             else:

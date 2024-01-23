@@ -61,6 +61,16 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "Future versions will support 'CellTypis' and 'DecoupleR based annotation'.",
     )
     subparser.add_argument(
+        "--annotation-key",
+        nargs=None,
+        type=str,
+        dest="annotation_key",
+        required=False,
+        default="manual_cellid_annotation",
+        help="Name of key in the metadata to use for annotation. "
+        "If not provided, the default will be 'manual_cellid_annotation'. "
+    )
+    subparser.add_argument(
         "--layer",
         nargs=None,
         type=str,
@@ -133,6 +143,12 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         default=consts.DEFAULT_CLUST_RESOLUTION,
         dest="clust_resolution",
         help="Resolution for initial clustering if --cluster-key is not provided.",
+    )
+    subparser.add_argument(
+        "--skip-dea",
+        dest="skip_dea",
+        action="store_true",
+        help="Including the flag --skip-dea will skip differential expression analysis.",
     )
     subparser.add_argument(
         "--random-state",

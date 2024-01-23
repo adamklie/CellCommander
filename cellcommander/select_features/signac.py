@@ -32,7 +32,10 @@ def run_signac(
     Signac = importr("Signac")
 
     # Prepare data for Seurat
-    data_mat = adata.layers[layer].T.astype("float32")
+    if layer is None:
+        data_mat = adata.X.astype("float32").T
+    else:
+        data_mat = adata.layers[layer].T.astype("float32")
     cell_names = adata.obs_names
     gene_names = adata.var_names
 

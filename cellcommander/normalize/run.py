@@ -29,6 +29,7 @@ from cellcommander.utils import describe_anndata
 from cellcommander.normalize import consts
 from cellcommander.normalize.tfidf import tfidf_recipe
 from cellcommander.normalize.sctransform import sctransform_recipe
+from cellcommander.normalize.log1p import log1p_recipe
 
 
 logger = logging.getLogger("cellcommander")
@@ -56,16 +57,25 @@ def run_normalize(args: argparse.Namespace):
         adata.var_names_make_unique()
         describe_anndata(adata)
 
-        if "counts" not in adata.layers.keys():
-            logger.info("Copying counts to layers with key 'counts'")
-            adata.layers["counts"] = adata.X.copy()
-
         # Run methods
         if "sctransform" in args.methods:
-            sctransform_recipe(adata, args.output_dir, save_normalized_mtx=args.save_normalized_mtx)
+            logger.info(f"Using SCTransform to normalize data.")
+            sctransform_recipe(
+                adata=adata, 
+                outdir_path=args.output_dir, 
+                filter_genes=args.filter_features,
+                save_normalized_mtx=args.save_normalized_mtx)
 
         if "tfidf" in args.methods:
+            logger.info(f"Using TF-IDF to normalize data.")
             tfidf_recipe(adata, args.output_dir, scale_factor=args.tfidf_scale_factor, save_normalized_mtx=args.save_normalized_mtx)
+
+        if "log1p" in args.methods:
+            logger.info(f"Using log1p normalization.")
+            log1p_recipe(
+                adata=adata, 
+                outdir_path=args.output_dir, 
+                save_normalized_mtx=args.save_normalized_mtx)
             
         # Save the adata
         logger.info(

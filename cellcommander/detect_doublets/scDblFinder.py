@@ -77,11 +77,13 @@ def save_scDblFinder(
 def scDblFinder_recipe(
     adata: AnnData,
     outdir_path: str,
+    atac_params: bool,
     random_state: int,
 ):
     # Run scDblFinder
     run_scDblFinder(
         adata=adata,
+        atac_params=atac_params,
         random_state=random_state,
     )
 

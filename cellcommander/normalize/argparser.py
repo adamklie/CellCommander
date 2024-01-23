@@ -48,23 +48,33 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Prefix for output files. " "If not provided, the prefix will be 'normalize'.",
     )
     subparser.add_argument(
-        "--methods",
-        nargs="+",
-        type=str,
-        dest="methods",
-        choices=["log1p", "scran", "pearson", "depth", "sctransform", "tfidf"],
-        required=False,
-        default="log1p",
-        help="Method to use for normalization. "
-        "Currently supports 'log1p', 'scran', 'pearson', 'depth', 'sctransform' for scRNA-seq data "
-        "and 'lsi' for scATAC-seq data. ",
-    )
-    subparser.add_argument(
         "--save-normalized-mtx",
         dest="save_normalized_mtx",
         action="store_true",
         help="Including the flag --save-normalized-matrix will save the normalized matrix to a file, "
         "in addition to a barcodes.tsv and features.tsv file.",
+    )
+    subparser.add_argument(
+        "--methods",
+        nargs="+",
+        type=str,
+        dest="methods",
+        choices=["log1p", "sctransform", "tfidf"],
+        required=False,
+        default="log1p",
+        help="Method to use for normalization. "
+        "Currently supports 'log1p', 'sctransform' for scRNA-seq data "
+        "and 'lsi' for scATAC-seq data. ",
+    )
+    subparser.add_argument(
+        "--filter_features",
+        action="store_true",
+        dest="filter_features",
+        required=False,
+        default=False,
+        help="Whether to filter features before normalization. "
+        "This currently only applies to the 'sctransform' method. "
+        "and filters out genes expressed in less than 20 cells"
     )
     subparser.add_argument(
         "--log_idf",
@@ -109,18 +119,18 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Scale factor for tfidf normalization.",
     )
     subparser.add_argument(
-        '--initial-clust-n-neighbors',
+        '--clust-n-neighbors',
         type=int,
-        default=consts.DEFAULT_INITIAL_CLUST_N_NEIGHBORS,
-        dest="initial_clust_n_neighbors",
-        help="Number of neighbors for initial clustering.",
+        default=consts.DEFAULT_CLUST_N_NEIGHBORS,
+        dest="clust_n_neighbors",
+        help="Number of neighbors for clustering.",
     )
     subparser.add_argument(
-        '--initial_clust_resolution',
+        '--clust_resolution',
         type=float,
-        default=consts.DEFAULT_INITIAL_CLUST_RESOLUTION,
-        dest="initial_clust_resolution",
-        help="Resolution for initial clustering.",
+        default=consts.DEFAULT_CLUST_RESOLUTION,
+        dest="clust_resolution",
+        help="Resolution for clustering.",
     )
     subparser.add_argument(
         "--random-state",
