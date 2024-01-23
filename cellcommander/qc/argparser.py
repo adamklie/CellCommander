@@ -38,7 +38,8 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         type=str,
         dest="output_dir",
         required=True,
-        help="Output directory location. " "If it does not exist, it will be created.",
+        help="Output directory location. "
+        "If it does not exist, it will be created.",
     )
     subparser.add_argument(
         "--output_prefix",
@@ -47,7 +48,8 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         dest="output_prefix",
         required=False,
         default="qc",
-        help="Prefix for output files. " "If not provided, the prefix will be 'qc'.",
+        help="Prefix for output files. "
+        "If not provided, the prefix will be 'qc'.",
     )
     subparser.add_argument(
         "--sample_name",
@@ -103,8 +105,8 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         required=False,
         choices=["rna", "atac"],
         default="rna",
-        help="Mode of the data. "
-        "Currently only supports 'rna' and 'atac' mode. "
+        help="Modality of the data. "
+        "Currently only supports 'rna' and 'atac'. "
         "If 'rna' mode is selected, the features for "
         "calculating qcs and thresholds are assumed to be "
         "gene counts."
@@ -118,7 +120,8 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         dest="multimodal_input",
         required=False,
         help="If included, the input data is assumed to be multimodal. "
-        "will select the features based on the mode. ",
+        "This is just used for reading in the format of the data and "
+        "features will still be selected for based on the mode. ",
     )
     subparser.add_argument(
         "--fragments_path",
@@ -128,10 +131,11 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         required=False,
         default=None,
         help="Path to fragments file "
-        "containing information about fragments. ",
+        "containing information about fragments. "
+        "This is required if 'atac' mode is selected. ",
     )
     subparser.add_argument(
-        "--no-filter",
+        "--no_filter",
         action="store_true",
         dest="no_filter",
         required=False,
@@ -336,11 +340,8 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         required=False,
         default="muon",
         help="Tool to use for ATAC-seq QC. "
-        "Currently supports either Muon or PyCisTopic. "
-        "At a minimum, the tool will be used to calculate the per barcode TSS enrichment"
-        "Other metrics may be calculated depending on the tool. "
-        "For instance, if pycistopic is selected, it will also output sample level metrics "
-        "in the output directory.",
+        "Currently supports only `muon` "
+        "The metrics that are calculated are dependent on the tool. "
     )
     subparser.add_argument(
         "--n_for_ns_calc",
@@ -372,10 +373,11 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="The number of cells a feature must be detected in "
         "to be included in the analysis "
         "Only use this if you would like to remove very rare features "
-        "in the early stages of the analysis. ",
+        "in the early stages of the analysis, which can be useful for "
+        "cutting down computational costs. ",
     )
     subparser.add_argument(
-        "--random-state",
+        "--random_state",
         nargs=None,
         type=int,
         dest="random_state",
@@ -384,7 +386,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Random state to use for random number generators.",
     )
     subparser.add_argument(
-        "--cpu-threads",
+        "--cpu_threads",
         type=int,
         default=None,
         dest="n_threads",

@@ -9,21 +9,20 @@ Single cell analysis is often characterized by “kitchensink” modeling (e.g. 
 
 Though frameworks like scverse, Bioconductor, Seurat and ScanPy have made so many of these methods easily accessible, these methods are still difficult to manipulate into pipelines that you can run for automated analysis of many samples.
 
-**My goal was to translate these methodologies into a tool that automates testing them out and running them end-to-end on a variety of data types.**
+**My goal was to build a tool that automates testing out pipelines end-to-end on a variety of data types.**
+
+Below we enumerate the modules that are currently available in CellCommander that one can think of as the building blocks of a single cell analysis pipeline. Each module contains the following in common:
+1. An input argument, usually a path to a cell x feature matrix or fragment file
+2. An output directory argument, where the output of the module will be saved
+3. Generates a log file that contains a history of the commands that were run
 
 # `qc`
-
-<aside>
-⭐ This is a command line module for performing initial QC and filtering of your cell x feature matrix.
-
-</aside>
+⭐ This is a command line module for performing initial QC and filtering of your cell x feature matrix. Use `cellcommander qc --help` to see all of the available options.
 
 ## `--modes ["rna", "atac"]`
-
-- Determines what metrics should be calculated for the data
-- So far, I’m liking SnapATAC2 and ArchR’s way of calculating QCs — Muon may not be the best option here
-    - I have an argument called `**--atac_qc_tool**` where we theoretically could use either of these two to load in the files for initial QC
-
+Determines what metrics should be calculated for the data.
+ - [] So far, I’m liking SnapATAC2 and ArchR’s way of calculating QCs — Muon may not be the best option here. `--atac_qc_tool**` where we theoretically could use either of these two to load in the files for initial QC
+ 
 ## `--filtering_strategy ["mad", "threshold"]`
 
 - Determines how cell outliers are calculated
