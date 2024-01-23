@@ -85,3 +85,4 @@ https://scverse-tutorials.readthedocs.io/en/latest/index.html
 
 # TODO
 - [ ] When a step is necessary to tweak in a pipeline, come back to this and improve the documentation
+- [ ] Add in a environment spec or singularity containers for running
