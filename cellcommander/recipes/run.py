@@ -98,6 +98,7 @@ def run_recipes(args: argparse.Namespace):
                     clustering_resolution=params["analysis"]["clustering_resolution"],
                     gene_activity=params["io"]["gene_activity"],
                     metadata=metadata,
+                    additional_doublets=params["qc"]["additional_doublets"],
                     save_intermediate=params["io"]["save_intermediate"],
                 )
             else:

@@ -8,17 +8,16 @@ import traceback
 from datetime import datetime
 from typing import Dict, Optional, Tuple, Union
 
-import matplotlib
-import muon as mu
 import pandas as pd
-import psutil
+import matplotlib
 import scanpy as sc
+import muon as mu
+
 from mudata import MuData
 from anndata import AnnData
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # This needs to be after matplotlib.use('Agg')
-import seaborn as sns
 
 sc.settings.verbosity = 0
 sc.settings.set_figure_params(
@@ -26,7 +25,7 @@ sc.settings.set_figure_params(
     facecolor="white",
     frameon=False,
 )
-from cellcommander.utils import describe_anndata
+from cellcommander.utils import describe_anndata, describe_mudata
 from cellcommander.annotate import consts
 from cellcommander.annotate.utils import check_marker_genes, get_user_input
 
@@ -52,38 +51,72 @@ def run_annotate(args: argparse.Namespace):
             
         # Read in single h5 file
         logger.info(f"Reading h5 file from {args.input_file}")
-        adata = sc.read_h5ad(args.input_file)
-        adata.var_names_make_unique()
-        describe_anndata(adata)
+
+        # if extension is .h5ad, read as AnnData
+        if args.input_file.endswith(".h5ad"):
+            data = sc.read_h5ad(args.input_file)
+            data.var_names_make_unique()
+            describe_anndata(data)
         
-        # Make a copy of the adata so we don't overwrite the original
-        adata_plot = adata.copy()
+        # if extension is .h5mu, read as MuData
+        elif args.input_file.endswith(".h5mu"):
+            data = mu.read_h5mu(args.input_file, backed=None)
+            data.var_names_make_unique()
+            describe_mudata(data)
+        
+        # Make a copy of the data so we don't overwrite the original
+        data_plot = data.copy()
 
         # Make .X the passed in layer if provided
         if args.layer is not None:
-            adata_plot.X = adata_plot.layers[args.layer]
-            logger.info(f"Using {args.layer} layer as .X")
+
+            # If it's a mudata, a modality must be provided
+            if isinstance(data, MuData) and args.modality is None:
+                raise ValueError("If using a MuData, a modality must be provided")
+            
+            if isinstance(data, MuData):
+                data_plot[args.modality].X = data_plot[args.modality].layers[args.layer]
+                logger.info(f"Using {args.layer} layer as .X for modality {args.modality}")
+
+            else:        
+                data_plot.X = data_plot.layers[args.layer]
+                logger.info(f"Using {args.layer} layer as .X")
         
         # Get the dim reductions
-        adata_plot.obsm["X_umap"] = adata_plot.obsm[args.dim_reduction]
-        logger.info(f"Using {args.dim_reduction} as .obsm['X_umap']")
+        if args.dim_reduction in data_plot.obsm.keys():
+            data_plot.obsm["X_umap"] = data_plot.obsm[args.dim_reduction]
+            logger.info(f"Using {args.dim_reduction} as .obsm['X_umap']")
+        else:
+            # Check the modality passed in
+            if isinstance(data, MuData) and args.modality is not None:
+                data_plot.obsm["X_umap"] = data_plot[args.modality].obsm[args.dim_reduction]
+                logger.info(f"Using {args.dim_reduction} as .obsm['X_umap'] for modality {args.modality}")
 
         # Get the clustering
         if args.cluster_key is None:
             logger.info("No cluster key provided, running leiden clustering")
-            adata_plot.obsm["X_pca"] = adata_plot.obsm[args.clust_dim_reduction]
+            data_plot.obsm["X_pca"] = data_plot.obsm[args.clust_dim_reduction]
             logger.info(f"Using {args.clust_dim_reduction} as .obsm['X_pca']")
-            sc.pp.neighbors(adata_plot, use_rep="X_pca", n_neighbors=args.clust_n_neighbors, random_state=args.random_state, n_pcs=args.clust_n_components)
+            sc.pp.neighbors(data_plot, use_rep="X_pca", n_neighbors=args.clust_n_neighbors, random_state=args.random_state, n_pcs=args.clust_n_components)
             cluster_key = f"annotate_leiden_{args.clust_resolution}"
-            sc.tl.leiden(adata_plot, resolution=args.clust_resolution, random_state=args.random_state, key_added=cluster_key)
+            sc.tl.leiden(data_plot, resolution=args.clust_resolution, random_state=args.random_state, key_added=cluster_key)
 
         else:
-            logger.info(f"Using {args.cluster_key} as cluster key")
-            cluster_key = args.cluster_key
+            if args.cluster_key in data_plot.obs.keys():
+                logger.info(f"Using {args.cluster_key} as cluster key")
+                cluster_key = args.cluster_key
+            else:
+                # check the modality passed in
+                if isinstance(data, MuData) and args.modality is not None:
+                    if args.cluster_key in data_plot[args.modality].obs.keys():
+                        logger.info(f"Using {args.cluster_key} as cluster key for modality {args.modality}")
+                        cluster_key = f"{args.modality}:{args.cluster_key}"
+                    else:
+                        raise ValueError(f"Cluster key {args.cluster_key} not found in modality {args.modality}")
 
         # Plot the clustering as it's own UMAP
         with plt.rc_context({"figure.figsize": (5, 5)}):
-            sc.pl.umap(adata_plot, color=cluster_key, legend_loc="on data", show=False)
+            sc.pl.umap(data_plot, color=cluster_key, legend_loc="on data", show=False)
             plt.savefig(os.path.join(args.output_dir, f"{cluster_key}_umap.png"))
             plt.close()
         
@@ -92,15 +125,15 @@ def run_annotate(args: argparse.Namespace):
             logger.info(f"Plotting markers from {args.marker_gene_list}")
             marker_genes_df = pd.read_csv(args.marker_gene_list)
             marker_genes_dict = marker_genes_df.groupby("cell_id")["gene"].apply(list).to_dict()
-            marker_genes_in_data = check_marker_genes(adata_plot, marker_genes_dict)
+            marker_genes_in_data = check_marker_genes(data_plot, marker_genes_dict)
             for ct in marker_genes_in_data.keys():
                 logger.info(f"Plotting markers for {ct} to {os.path.join(args.output_dir, 'marker_plots', f'{ct}_markers.png')}")
                 if not os.path.exists(os.path.join(args.output_dir, "marker_plots")):
                         os.makedirs(os.path.join(args.output_dir, "marker_plots"))
                 logger.info(f"Relavent {ct} markers: {marker_genes_in_data[ct]}")
                 with plt.rc_context():
-                    sc.pl.umap(
-                        adata_plot,
+                    mu.pl.umap(
+                        data_plot,
                         color=marker_genes_in_data[ct],
                         vmin=0,
                         vmax="p99.5",  # set vmax to the 99th percentile of the gene count instead of the maximum, to prevent outliers from making expression in other cells invisible. Note that this can cause problems for extremely lowly expressed genes.
@@ -114,25 +147,39 @@ def run_annotate(args: argparse.Namespace):
             # Plot a dotplot of the markers
             with plt.rc_context():
                 logger.info(f"Plotting dotplot of markers to {os.path.join(args.output_dir, 'marker_gene_dotplot.png')}")
-                sc.pl.dotplot(
-                    adata_plot,
-                    groupby=cluster_key,
-                    var_names=marker_genes_in_data,
-                    standard_scale="var",  # standard scale: normalize each gene to range from 0 to 1
-                )
+                if isinstance(data, MuData):
+                    data_plot[args.modality].obs[cluster_key] = data_plot.obs[cluster_key]
+                    sc.pl.dotplot(
+                        data_plot[args.modality],
+                        groupby=cluster_key,
+                        var_names=marker_genes_in_data,
+                        standard_scale="var",  # standard scale: normalize each gene to range from 0 to 1
+                    )
+                else:
+                    sc.pl.dotplot(
+                        data_plot,
+                        groupby=cluster_key,
+                        var_names=marker_genes_in_data,
+                        standard_scale="var",  # standard scale: normalize each gene to range from 0 to 1
+                    )
                 plt.savefig(os.path.join(args.output_dir, "marker_gene_dotplot.png"))
                 plt.close()
 
             if args.skip_dea:
                 logger.info("Skipping differential expression analysis")
             else:
+                if isinstance(data, MuData):
+                    dotplot_data = data_plot[args.modality]
+                else:
+                    dotplot_data = data_plot
+                
                 # Get quantified marker genes and plot a dotplot
                 sc.tl.rank_genes_groups(
-                    adata_plot, groupby=cluster_key, method="wilcoxon", key_added=f"dea_{cluster_key}"
+                    dotplot_data, groupby=cluster_key, method="wilcoxon", key_added=f"dea_{cluster_key}"
                 )
                 # Filter these results to genes that are highly specific to each cluster
                 sc.tl.filter_rank_genes_groups(
-                    adata_plot,
+                    dotplot_data,
                     min_in_group_fraction=0.2,
                     max_out_group_fraction=0.2,
                     key=f"dea_{cluster_key}",
@@ -142,7 +189,7 @@ def run_annotate(args: argparse.Namespace):
                     # Dot plot those markers
                     logger.info(f"Plotting dotplot of DEA markers to {os.path.join(args.output_dir, f'dea_{cluster_key}_filtered_dotplot.png')}")
                     sc.pl.rank_genes_groups_dotplot(
-                        adata_plot,
+                        dotplot_data,
                         groupby=cluster_key,
                         standard_scale="var",
                         n_genes=5,
@@ -153,7 +200,7 @@ def run_annotate(args: argparse.Namespace):
 
         if "manual" in args.methods:
             logger.info("Running manual annotation, will prompt user to annotate clusters")
-            numerically_sorted_clusters = sorted(adata_plot.obs[cluster_key].unique(), key=lambda x: int(x))
+            numerically_sorted_clusters = sorted(data_plot.obs[cluster_key].unique(), key=lambda x: int(x))
             if args.marker_gene_list is not None:
                 cell_types_to_choose_from = marker_genes_df.iloc[:, 1].unique().tolist() + ["other"]
             else:
@@ -161,24 +208,24 @@ def run_annotate(args: argparse.Namespace):
             cluster_to_celltype = get_user_input(numerically_sorted_clusters, cell_types_to_choose_from)
 
             # Add the annotation to obs
-            adata_plot.obs[args.annotation_key] = adata_plot.obs[cluster_key].map(cluster_to_celltype)
+            data_plot.obs[args.annotation_key] = data_plot.obs[cluster_key].map(cluster_to_celltype)
 
             with plt.rc_context({"figure.figsize": (5, 5)}):
-                sc.pl.umap(adata_plot, color=[args.annotation_key, cluster_key], legend_loc="on data", show=False)
+                mu.pl.umap(data_plot, color=[args.annotation_key, cluster_key], legend_loc="on data", show=False)
                 plt.savefig(os.path.join(args.output_dir, f"{args.annotation_key}_umap.png"))
                 plt.close()
 
         # Save a tsv
-        adata_plot.obs.to_csv(os.path.join(args.output_dir, f"{args.output_prefix}_metadata.tsv"), sep="\t")
+        data_plot.obs.to_csv(os.path.join(args.output_dir, f"{args.output_prefix}_metdata.tsv"), sep="\t")
 
-        # Save the adata
-        #del adata.uns[f"dea_{cluster_key}_filtered"]
-        adata.obs[cluster_key] = adata_plot.obs[cluster_key]
-        adata.obs[args.annotation_key] = adata_plot.obs[args.annotation_key]
+        # Save the data with the annotations
+        data.obs[cluster_key] = data_plot.obs[cluster_key]
+        data.obs[args.annotation_key] = data_plot.obs[args.annotation_key]
+        ext = os.path.splitext(args.input_file)[1]
         logger.info(
-            f"Saving adata with cell identity annotations in `.obs` to {os.path.join(args.output_dir, f'{args.output_prefix}.h5ad')}"
+            f"Saving data with cell identity annotations in `.obs` to {os.path.join(args.output_dir, f'{args.output_prefix}{ext}')}"
         )
-        adata.write(os.path.join(args.output_dir, f"{args.output_prefix}.h5ad"))
+        data.write(os.path.join(args.output_dir, f"{args.output_prefix}{ext}"))
 
         # Log the end time
         logger.info("Completed annotate")

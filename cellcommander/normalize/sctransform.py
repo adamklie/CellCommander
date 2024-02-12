@@ -23,6 +23,8 @@ logger = logging.getLogger("cellcommander")
 def run_sctransform(
     adata,
     filter_genes: bool = False,
+    vars_to_regress: Optional[Iterable[str]] = [],
+    random_state: Optional[int] = 1234
 ):
     logger.info("Importing necessary R modules for running SCTransform with Seurat.")
     Seurat = importr("Seurat")
@@ -43,24 +45,35 @@ def run_sctransform(
         sc.pp.filter_genes(adata_pp, min_cells=20)
         logger.info(f"Number of genes after cell filter: {adata_pp.n_vars}")
 
+    # Confirm that vars_to_regress are available in adata.obs, report and remove any that are not
+    for var in vars_to_regress:
+        if var not in adata_pp.obs.columns:
+            logger.warning(f"Variable to regress {var} not found in adata.obs, removing from vars_to_regress.")
+            vars_to_regress.remove(var)
+
     # Prepare data for Seurat
     data_mat = adata_pp.X.T.astype("float32")
     cell_names = adata_pp.obs_names
     gene_names = adata_pp.var_names
+    metadata = adata_pp.obs
 
     # Load into global environment
     ro.globalenv["data_mat"] = data_mat
     ro.globalenv["cell_names"] = cell_names
     ro.globalenv["gene_names"] = gene_names
-
+    ro.globalenv["metadata"] = metadata
+    ro.globalenv["vars_to_regress"] = vars_to_regress
+    ro.globalenv["seed"] = random_state
+    
     # Run SCTransform
     logger.info("Running SCTransform using Seurat and rpy2.")
-    ro.r('''mtx = Matrix(data_mat, sparse = TRUE)
+    ro.r('''set.seed(seed)
+            mtx = Matrix(data_mat, sparse = TRUE)
             rownames(mtx) = gene_names
             colnames(mtx) = cell_names
-            sobj = CreateSeuratObject(counts = mtx, assay = "RNA")
-            sobj = SCTransform(sobj, verbose = FALSE, method = "glmGamPoi")
-            counts = GetAssayData(object = sobj, assay = "SCT", slot = "counts")
+            sobj = CreateSeuratObject(counts = mtx, assay = "RNA", meta.data = metadata)
+            vars_to_regress = unlist(vars_to_regress)
+            sobj = SCTransform(sobj, verbose = FALSE, method = "glmGamPoi", vars.to.regress = vars_to_regress, seed.use = seed)
             data = GetAssayData(object = sobj, assay = "SCT", slot = "data")
             scale_data = GetAssayData(object = sobj, assay = "SCT", slot = "scale.data")
             variable_genes = VariableFeatures(object = sobj)
@@ -108,9 +121,11 @@ def sctransform_recipe(
     adata: AnnData,
     outdir_path: str,
     filter_genes: bool = False,
+    vars_to_regress: Optional[Iterable[str]] = None,
     save_normalized_mtx: bool = False,
+    random_state: Optional[int] = 1234,
 ):
-    run_sctransform(adata, filter_genes=filter_genes)
+    run_sctransform(adata, filter_genes=filter_genes, vars_to_regress=vars_to_regress, random_state=random_state)
     plot_sctransform(adata, outdir_path)
     if save_normalized_mtx:
         if not os.path.exists(os.path.join(outdir_path, "sctransform")):

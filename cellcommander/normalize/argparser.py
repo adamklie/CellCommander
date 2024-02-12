@@ -77,6 +77,16 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "and filters out genes expressed in less than 20 cells"
     )
     subparser.add_argument(
+        "--vars_to_regress",
+        nargs="+",
+        type=str,
+        dest="vars_to_regress",
+        required=False,
+        default=None,
+        help="Variables to regress out of the data. "
+        "This currently only applies to the 'sctransform' method."
+    )
+    subparser.add_argument(
         "--log_idf",
         nargs=None,
         type=bool,

@@ -36,6 +36,12 @@ def rna_qc_triplet_plot(
         )
         plt.close()
 
+        sc.pl.violin(adata, "pct_counts_ribo")
+        plt.savefig(
+            os.path.join(outdir_path, f"{output_prefix}_pct_counts_ribo_violin.png")
+        )
+        plt.close()
+
         sc.pl.scatter(adata, "total_counts", "n_genes_by_counts", color="pct_counts_mt")
         plt.savefig(
             os.path.join(outdir_path, f"{output_prefix}_total_counts_vs_n_genes.png")
@@ -51,6 +57,8 @@ def rna_qc(
     pct_counts_in_top_genes_nmads: int = 3,
     pct_counts_mt_nmads: int = 3,
     pct_counts_mt_hi: float = 10,
+    pct_counts_ribo_nmads: int = 3,
+    pct_counts_ribo_hi: float = 1,
     n_genes_hi: Optional[int] = None,
     n_genes_low: Optional[int] = None,
 ) -> None:
@@ -141,6 +149,23 @@ def rna_qc(
             adata, "pct_counts_mt", pct_counts_mt_nmads
         ) | (adata.obs["pct_counts_mt"] > pct_counts_mt_hi)
 
+    # Define ribo outliers by either MADs or a user-defined threshold
+    if n_genes_hi is not None or n_genes_low is not None:
+        logger.info(
+            "Defining ribosomal feature outliers based on a user-defined threshold "
+            f"of {pct_counts_ribo_hi}% of total counts"
+        )
+        adata.obs["ribo_outlier"] = adata.obs["pct_counts_ribo"] > pct_counts_ribo_hi
+    else:
+        logger.info(
+            "Defining ribosomal feature outliers based on "
+            f"{pct_counts_ribo_nmads} MADs for the percentage of counts in ribosomal features "
+            f"and a user-defined threshold of {pct_counts_ribo_hi}% of total counts"
+        )
+        adata.obs["ribo_outlier"] = is_outlier(
+            adata, "pct_counts_ribo", pct_counts_ribo_nmads
+        ) | (adata.obs["pct_counts_ribo"] > pct_counts_ribo_hi)
+
     return
 
 
@@ -161,7 +186,7 @@ def rna_outlier_filter(
     # Actually filter the data
     logger.info(f"Number of cells pre-filtering: {adata.n_obs}")
     # filter_mask = (~adata.obs[outlier_cols].any(axis=1))
-    filter_mask = (~adata.obs.outlier) & (~adata.obs.mt_outlier)
+    filter_mask = (~adata.obs.outlier) & (~adata.obs.mt_outlier) & (~adata.obs.ribo_outlier)
     filtered_bc = adata.obs[~filter_mask].index
     adata = adata[filter_mask].copy()
     logger.info(f"Number of cells after filtering of low quality cells: {adata.n_obs}")

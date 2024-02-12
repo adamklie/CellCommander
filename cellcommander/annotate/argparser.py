@@ -22,14 +22,14 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     subparser.add_argument(
-        "--input_h5ad_path",
+        "--input_path",
         nargs=None,
         type=str,
         dest="input_file",
         required=True,
         help="Data file on which to run tool. "
         "The following input formats are supported: "
-        "AnnData (.h5ad). "
+        "AnnData (.h5ad), MuData (.h5mu)."
     )
     subparser.add_argument(
         "--outdir_path",
@@ -47,6 +47,17 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         required=False,
         default="annotate",
         help="Prefix for output files. " "If not provided, the prefix will be 'annotate'.",
+    )
+    subparser.add_argument(
+        "--modality_key",
+        nargs=None,
+        type=str,
+        dest="modality",
+        choices=["rna", "atac"],
+        help="Key of modality in the MuData object to use for plotting. "
+        "Currently supports 'rna' and 'atac'. "
+        "Only relevant if the input file is a MuData object with multiple modalities"
+        "Make sure that any marker gene lists provided are relevant to the modality of the data.",
     )
     subparser.add_argument(
         "--methods",
