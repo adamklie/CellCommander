@@ -130,16 +130,28 @@ def run_detect_doublets(args: argparse.Namespace):
         else:
             adata.obs["doublet_filter"] = adata.obs[f"{methods[0]}_predicted_doublet"]
         
+        # Filter out any user defined lists of barcodes
+        barcodes_to_filter = []
+        if args.barcode_exclusion_list_paths is not None:
+            for path in args.barcode_exclusion_list_paths:
+                logger.info(f"Excluding barcodes from {path}")
+                barcodes_to_filter.append(pd.read_csv(path, header=None)[0].tolist())
+            adata.obs["additional_barcode_exclusion_list"] = adata.obs.index.isin(barcodes_to_filter)
+                        
         # Plot doublet scores on UMAP
         doublet_score_columns = [c for c in adata.obs.columns if "_score" in c]
         adata_pp.obs[doublet_score_columns + ["doublet_filter"]] = adata.obs[doublet_score_columns + ["doublet_filter"]]
         adata_pp.obs["doublet_filter"] = adata.obs["doublet_filter"].astype("category")
         adata.obs[f"pre_doublet_filter_leiden_{args.clust_resolution}"] = adata_pp.obs[f"pre_doublet_filter_leiden_{args.clust_resolution}"]
+        plot_cols = [f"pre_doublet_filter_leiden_{args.clust_resolution}"] + doublet_score_columns + ["doublet_filter"]
+        if args.barcode_exclusion_list_paths is not None:
+            adata_pp.obs["additional_barcode_exclusion_list"] = adata.obs["additional_barcode_exclusion_list"].astype("category")
+            plot_cols.append("additional_barcode_exclusion_list")
         logger.info("Plotting doublet scores on UMAP")
         with plt.rc_context():
             sc.pl.umap(
                 adata_pp,
-                color=[f"pre_doublet_filter_leiden_{args.clust_resolution}"] + doublet_score_columns + ["doublet_filter"],
+                color=plot_cols,
                 vmin=0,
                 vmax="p99", 
                 sort_order=False, 

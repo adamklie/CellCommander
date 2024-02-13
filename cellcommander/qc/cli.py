@@ -57,6 +57,7 @@ class CLI(AbstractCLI):
             args.n_features_nmads = None
             args.pct_counts_in_top_features_nmads = None
             args.pct_counts_mt_nmads = None
+            args.pct_counts_ribo_nmads = None
             args.ns_nmads = None
             args.tss_nmads = None
 
@@ -86,11 +87,21 @@ class CLI(AbstractCLI):
                 args.pct_counts_mt_nmads > 0
             ), "--pct_counts_mt_nmads must be a positive number."
 
+        if args.pct_counts_ribo_nmads is not None:
+            assert (
+                args.pct_counts_ribo_nmads > 0
+            ), "--pct_counts_ribo_nmads must be a positive number."
+
         # Validate that percentage values are within a logical range
         if args.pct_counts_mt_hi is not None:
             assert (
                 0 <= args.pct_counts_mt_hi <= 100
             ), "--pct_counts_mt_hi must be a percentage between 0 and 100."
+
+        if args.pct_counts_ribo_hi is not None:
+            assert (
+                0 <= args.pct_counts_ribo_hi <= 100
+            ), "--pct_counts_ribo_hi must be a percentage between 0 and 100."
 
         # Validate that n_features_low and n_features_hi are logical
         if args.n_features_low is not None and args.n_features_hi is not None:

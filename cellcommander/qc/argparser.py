@@ -220,6 +220,18 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "Only used in 'rna' mode if filtering strategy is `mad`.",
     )
     subparser.add_argument(
+        "--pct_counts_ribo_nmads",
+        nargs=None,
+        type=int,
+        dest="pct_counts_ribo_nmads",
+        required=False,
+        default=consts.DEFAULT_PCT_COUNTS_RIBO_NMADS,
+        help="All cells with that have a mad for percentage of counts "
+        "in ribosomal features greater than this threshold "
+        "will be filtered out. "
+        "Only used in 'rna' mode if filtering strategy is `mad`.",
+    )
+    subparser.add_argument(
         "--ns_nmads",
         nargs=None,
         type=int,
@@ -273,6 +285,17 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         required=False,
         default=consts.DEFAULT_PCT_COUNTS_MT_HI,
         help="All cells with a percentage of counts in mitochondrial "
+        "features greater than this threshold will be filtered out. "
+        "Only used in 'rna' mode regardless of filtering strategy.",
+    )
+    subparser.add_argument(
+        "--pct_counts_ribo_hi",
+        nargs=None,
+        type=float,
+        dest="pct_counts_ribo_hi",
+        required=False,
+        default=consts.DEFAULT_PCT_COUNTS_RIBO_HI,
+        help="All cells with a percentage of counts in ribosomal "
         "features greater than this threshold will be filtered out. "
         "Only used in 'rna' mode regardless of filtering strategy.",
     )

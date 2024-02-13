@@ -64,7 +64,10 @@ def run_normalize(args: argparse.Namespace):
                 adata=adata, 
                 outdir_path=args.output_dir, 
                 filter_genes=args.filter_features,
-                save_normalized_mtx=args.save_normalized_mtx)
+                vars_to_regress=args.vars_to_regress,
+                save_normalized_mtx=args.save_normalized_mtx,
+                random_state=args.random_state
+            )
 
         if "tfidf" in args.methods:
             logger.info(f"Using TF-IDF to normalize data.")

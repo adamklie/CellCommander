@@ -85,9 +85,8 @@ def run_qc(args: argparse.Namespace):
                 adata = data
 
             # Sample level metrics
-            metrics = ["n_genes_by_counts", "total_counts", "pct_counts_mt"]
+            metrics = ["n_genes_by_counts", "total_counts", "pct_counts_mt", "pct_counts_ribo"]
 
-        
         # If atac
         elif args.mode == "atac":
         
@@ -178,7 +177,7 @@ def run_qc(args: argparse.Namespace):
                 logger.info(f"Filtering using strategy: `{args.filtering_strategy}`")
                 adata, filtered_bc = rna_outlier_filter(
                     adata,
-                    outlier_cols=["outlier", "mt_outlier"],
+                    outlier_cols=["outlier", "mt_outlier", "ribo_outlier"],
                 )
 
                 # Save the barcodes of filtered cells to output directory

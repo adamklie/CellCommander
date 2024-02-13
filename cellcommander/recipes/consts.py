@@ -27,7 +27,8 @@ DEFAULT_PARAMS = {
             "qc": {
                 "max_num_fragments": None,
                 "min_num_fragments": 1000,
-                "min_tsse": 5
+                "min_tsse": 5,
+                "additional_doublets": None
             }
         }
     }

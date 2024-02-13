@@ -74,7 +74,8 @@ def run_joint_integrate(args: argparse.Namespace):
                 rna_obsm_key=args.rna_dim_reduction,
                 atac_obsm_key=args.atac_dim_reduction,
                 cluster_key=args.cluster_key, 
-                cluster_resolution=args.clust_resolution
+                cluster_resolution=args.clust_resolution,
+                random_state=args.random_state
             )
             if args.cluster_key:
                 with plt.rc_context():

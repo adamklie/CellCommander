@@ -58,7 +58,7 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         choices=["scrublet", "scDblFinder", "amulet", "cellranger", "consensus"],
         required=False,
         default="scrublet",
-        help="Mode of the data. "
+        help="Doublet detection method to use "
         "Currently supports 'scrublet', 'scDblFinder', 'cellranger', 'amulet' or 'consenesus`. "
         "If 'amulet' is selected, the data must be scATAC-seq. "
         "If cellranger is selected, the the column 'excluded_reason_cellranger' must be present in adata.obs. "
@@ -112,6 +112,17 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="If included, the scDblFinder parameters will be set to the defaults for scATAC-seq data. "
         "See https://bioconductor.org/packages/release/bioc/vignettes/scDblFinder/inst/doc/scATAC.html#the-clamulet-method "
         "for more details. ",
+    )
+    subparser.add_argument(
+        "--barcode_exclusion_list_paths",
+        nargs="+",
+        type=str,
+        dest="barcode_exclusion_list_paths",
+        required=False,
+        default=None,
+        help="Paths to files containing barcodes (one per line) to exclude on "
+        "top of the doublets detected by the methods. This filtering is done after methods "
+        "are run. ",
     )
     subparser.add_argument(
         "--no-filter",

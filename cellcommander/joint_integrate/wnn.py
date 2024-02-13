@@ -28,11 +28,11 @@ def run_seurat_wnn(
     atac_obsm_key: str = "X_lsi",
     rna_dim_start: int = 1,
     rna_dim_end: int = 50,
-    atac_dim_start: int = 1,
-    atac_dim_end: int = 49,
+    atac_dim_start: int = 2,
+    atac_dim_end: int = 50,
     cluster_key=None,
     cluster_resolution=1,
-    state=consts.RANDOM_STATE,
+    random_state=1234,
 ):
     logger.info("Importing necessary R libraries for WNN")
     Seurat = importr("Seurat")
@@ -72,11 +72,11 @@ def run_seurat_wnn(
 
     # Others
     ro.globalenv["rna_dim_start"] = rna_dim_start
-    ro.globalenv["rna_dim_end"] = rna_dim_end
+    ro.globalenv["rna_dim_end"] = rna_dim_end if rna_dim_end < rna_dim.shape[1] else rna_dim.shape[1]
     ro.globalenv["atac_dim_start"] = atac_dim_start
-    ro.globalenv["atac_dim_end"] = atac_dim_end
+    ro.globalenv["atac_dim_end"] = atac_dim_end if atac_dim_end < atac_dim.shape[1] else atac_dim.shape[1]
     ro.globalenv["cluster_resolution"] = cluster_resolution
-    ro.globalenv["seed"] = state
+    ro.globalenv["seed"] = random_state
 
     # Run WNN
     logger.info("Running WNN")
