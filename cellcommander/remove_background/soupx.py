@@ -92,12 +92,10 @@ def run_soupx(
     del adata_pp, adata_raw
 
     # Pass in soupx_markers as R vector of characters
-    soupx_markers_r = ro.ListVector({
-        "A": soupx_markers["Gene"].values[0], 
-        "B": soupx_markers["Gene"].values[1],
-        "C": soupx_markers["Gene"].values[2],
-        "D": soupx_markers["Gene"].values[3]}
-    )
+    keys = soupx_markers["Group"].values
+    values = soupx_markers["Gene"].values
+    soupx_markers_dict = dict(zip(keys, values))
+    soupx_markers_r = ro.ListVector(soupx_markers_dict)
 
     # Set up R objects
     logger.info("Setting up R objects.")
@@ -114,10 +112,7 @@ def run_soupx(
     # Run SoupX!
     logger.info(f"Running SoupX and saving RDS file to {os.path.join(outdir_path, 'soupx.rds')}.")
     ro.r('''
-        Genes1 <- c(soupx_markers[[1]])
-        Genes2 <- c(soupx_markers[[2]])
-        Genes3 <- c(soupx_markers[[3]])
-        Genes4 <- c(soupx_markers[[4]])
+        nonExpressedGeneList = soupx_markers
         data <- as(data, "dgCMatrix")
         data_tod <- as(data_tod, "dgCMatrix")
         rownames(data) <- genes
@@ -127,8 +122,8 @@ def run_soupx(
         soupc = SoupChannel(tod=data_tod, toc=data)
         soupc = setDR(soupc, metadata[colnames(soupc$toc), c("RD1", "RD2")])
         soupc = setClusters(soupc, setNames(metadata$Cluster, rownames(metadata)))
-        useToEst = estimateNonExpressingCells(soupc, nonExpressedGeneList = list(A=Genes1, B=Genes2, C=Genes3, D=Genes4))
-        soupc = calculateContaminationFraction(soupc, list(A=Genes1, B=Genes2, C=Genes3, D=Genes4), useToEst=useToEst)
+        useToEst = estimateNonExpressingCells(soupc, nonExpressedGeneList = nonExpressedGeneList)
+        soupc = calculateContaminationFraction(soupc, nonExpressedGeneList, useToEst=useToEst)
         contam_frac = 100*exp(coef(soupc$fit))[[1]]
         out = adjustCounts(soupc, roundToInt = TRUE)
         saveRDS(soupc, file = file.path(outdir_path, "soupx.rds"))
@@ -168,7 +163,7 @@ def run_soupx(
     adata.X = adata.layers[layer]
 
     # Reprocess after SoupX
-    logging.info("Reprocessing after SoupX to generate clustering and UMAP with ScanPy. Useful to compare to pre-SoupX.")
+    logger.info("Reprocessing after SoupX to generate clustering and UMAP with ScanPy. Useful to compare to pre-SoupX.")
     adata_pp = adata.copy()
     adata_pp.X = adata.layers[layer]
     sc.pp.filter_genes(adata_pp, min_cells=20)

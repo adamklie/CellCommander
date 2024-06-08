@@ -64,6 +64,12 @@ def run_remove_background(args: argparse.Namespace):
             describe_anndata(adata_raw)
             soupx_markers = pd.read_csv(args.markers_path, sep="\t")
 
+            if args.sample_name is not None:
+                logger.info(f"Adding sample name {args.sample_name} to barcode for raw data")
+                logger.info(f"Before: {adata_raw.obs.index[0]}")
+                adata_raw.obs.index = args.sample_name + "#" + adata_raw.obs.index
+                logger.info(f"After: {adata_raw.obs.index[0]}")
+
             # Run SoupX
             logger.info("Running backgorund removal with SoupX.")
             run_soupx(
@@ -79,9 +85,23 @@ def run_remove_background(args: argparse.Namespace):
                 random_state=args.random_state,
                 outdir_path=args.output_dir,
             )
+            # Recalculate QC metrics
+            logger.info("Recalculating QC metrics")
+            barcode_qc, gene_qc = sc.pp.calculate_qc_metrics(
+                adata,
+                qc_vars=["mt", "ribo"],
+                inplace=False,
+                percent_top=[20],
+                log1p=False,
+            )
+            barcode_qc.columns = [f"{col}_post_soupx" for col in barcode_qc.columns]
+            gene_qc.columns = [f"{col}_post_soupx" for col in gene_qc.columns]
+            adata.obs = adata.obs.merge(barcode_qc, left_index=True, right_index=True)
+            adata.obs["log1p_total_counts_post_soupx"] = np.log1p(adata.obs["total_counts_post_soupx"])
+            adata.var = adata.var.merge(gene_qc, left_index=True, right_index=True)
         else:
             raise ValueError(f"Method {args.method} not recognized.")
-        
+
         # Save the adata
         logger.info(
             f"Saving adata with corrected counts to {os.path.join(args.output_dir, f'{args.output_prefix}.h5ad')}"

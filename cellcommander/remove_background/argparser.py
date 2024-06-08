@@ -52,6 +52,16 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "If not provided, the prefix will be 'remove_background'.",
     )
     subparser.add_argument(
+        "--sample_name",
+        nargs=None,
+        type=str,
+        dest="sample_name",
+        required=False,
+        default=None,
+        help="Name of the sample. "
+        "Only used to prepend to raw data for SoupX.",
+    )
+    subparser.add_argument(
         "--method",
         nargs=None,
         type=str,
