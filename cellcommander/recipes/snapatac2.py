@@ -17,19 +17,20 @@ def single_sample_recipe(
     frag_file: str,
     outdir_path: str,
     sample_name: str = None,
-    bin_size: int = 500,
-    num_features: int = 50000,
     min_load_num_fragments: int = 500,
+    sorted_by_barcode: bool = True,
+    chunk_size: int = 2000,
+    save_intermediate: bool = False,
     min_tsse: int = 4,
     min_num_fragments: int = 1000,
     max_num_fragments: int = None,
-    sorted_by_barcode: bool = True,
-    chunk_size: int = 2000,
+    additional_doublets: str = None,
+    metadata: pd.DataFrame = None,
+    bin_size: int = 500,
+    num_features: int = 50000,
+    blacklist_path=None,
     clustering_resolution: float = 1.0,
     gene_activity: bool = True,
-    metadata: pd.DataFrame = None,
-    additional_doublets: str = None,
-    save_intermediate: bool = False,
 ):
 
     # Log snapATAC version
@@ -82,7 +83,7 @@ def single_sample_recipe(
 
     # Select the top accessible features
     logger.info(f"Selecting the top {num_features} accessible features")
-    snap.pp.select_features(adata, n_features=num_features)
+    snap.pp.select_features(adata, n_features=num_features, blacklist=blacklist_path)
 
     # Run scrublet
     logger.info("Running scrublet")

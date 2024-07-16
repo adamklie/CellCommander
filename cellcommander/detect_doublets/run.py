@@ -54,7 +54,10 @@ def run_detect_doublets(args: argparse.Namespace):
         if args.input_file.endswith(".h5ad"):
             adata = sc.read_h5ad(args.input_file)
         elif args.input_file.endswith(".h5"):
-            adata = sc.read_10x_h5(args.input_file)
+            if args.not_gex:
+                adata = sc.read_10x_h5(args.input_file, gex_only=False)
+            else:
+                adata = sc.read_10x_h5(args.input_file)
         else:
             adata = sc.read(args.input_file)
 
