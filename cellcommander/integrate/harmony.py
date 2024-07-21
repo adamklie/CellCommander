@@ -9,104 +9,70 @@ import anndata2ri
 from rpy2 import robjects as ro
 from rpy2.robjects.packages import importr
 from anndata import AnnData
+import pandas as pd
 anndata2ri.activate()
 anndata2ri.scipy2ri.activate()
 matplotlib.use("Agg")
-from typing import Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union, List
 
 import matplotlib.pyplot as plt  # This needs to be after matplotlib.use('Agg')
 
 logger = logging.getLogger("cellcommander")
 
+
 def run_harmonyR(
     adata: AnnData,
-    correction_key: Union[str, Iterable[str]],
-    counts_key: Optional[str] = None,
-    data_key: Optional[str] = None,
-    scale_data_key: Optional[str] = None,
-    sctransform_var_genes_column: Optional[str] = "sctransform_genes",
-    n_comps: int = 50,
+    obsm_key: str = "X_pca",
+    corrected_obsm_key: str = "X_harmony",
+    vars_to_correct: List = ["sample"],
+    max_iter_harmony: int = 10,
     random_state: int = 1234,
 ):
     # R imports
-    Seurat = importr("Seurat")
-    SeuratObject = importr("SeuratObject")
-    Matrix = importr("Matrix")
+    harmony = importr("harmony")
+    magrittr = importr("magrittr")
 
-    # Grab out of adata
-    if counts_key is None:
-        counts_data = adata.X.T.astype("float32")
-    else:
-        if counts_key in adata.layers.keys():
-            counts_data = adata.layers[counts_key].T.astype("float32")
-        elif counts_key in adata.obsm.keys():
-            counts_data = adata.obsm[counts_key].values.T.astype("float32")
-        else:
-            raise ValueError("counts_key not found in adata layers or obsm.")
-    if data_key is None:
-        data = adata.X.T.astype("float32")
-    else:
-        if data_key in adata.layers.keys():
-            data = adata.layers[data_key].T.astype("float32")
-        elif data_key in adata.obsm.keys():
-            data = adata.obsm[data_key].values.T.astype("float32")
-        else:
-            raise ValueError("data_key not found in adata layers or obsm.")
-    if scale_data_key is None:
-        scale_data = adata.X.T.astype("float32")
-    else:
-        if scale_data_key in adata.layers.keys():
-            scale_data = adata.layers[scale_data_key].T.astype("float32")
-        elif scale_data_key in adata.obsm.keys():
-            scale_data = adata.obsm[scale_data_key].values.T.astype("float32")
-        else:
-            raise ValueError("scale_data_key not found in adata layers or obsm.")
-    cell_names = adata.obs_names
-    gene_names = adata.var_names
-    sct_gene_names = adata.var[adata.var[sctransform_var_genes_column]].index.values
+    # Grab the dim reduction to correct
+    n_pcs = adata.obsm[obsm_key].shape[1]
+    dim_reduce = pd.DataFrame(adata.obsm[obsm_key], columns=['PC{}'.format(i) for i in range(1,n_pcs+1)], index=adata.obs.index)
+    obs = adata.obs
 
     # Toss into R's global environment
-    ro.globalenv["counts_data"] = counts_data
-    ro.globalenv["data"] = data
-    ro.globalenv["scale_data"] = scale_data
-    ro.globalenv["cell_names"] = cell_names
-    ro.globalenv["gene_names"] = gene_names
-    ro.globalenv["sct_gene_names"] = sct_gene_names
+    ro.globalenv["dim_reduce"] = dim_reduce
+    ro.globalenv["obs"] = obs
+    ro.globalenv["vars_to_correct"] = ro.StrVector(vars_to_correct)
+    ro.globalenv["max_iter_harmony"] = max_iter_harmony
     ro.globalenv["random_state"] = random_state
-    ro.globalenv["pca_n_comps"] = n_comps
-    ro.globalenv["batch_key"] = correction_key
 
      # Run 
     ro.r('''set.seed(random_state)
-            counts_mtx = Matrix(counts_data, sparse = TRUE)
-            rownames(counts_mtx) = gene_names
-            colnames(counts_mtx) = cell_names
-            mtx = Matrix(data, sparse = TRUE)
-            rownames(mtx) = gene_names
-            colnames(mtx) = cell_names
-            rownames(scale_data) = sct_gene_names
-            colnames(scale_data) = cell_names
-            sobj = CreateSeuratObject(assay="SCT", counts=counts_mtx, data=mtx, min.cells=0, min.features=0)
-            sobj@assays$SCT@scale.data <- scale_data
-            VariableFeatures(sobj[["SCT"]]) <- sct_gene_names
-            sobj = RunPCA(sobj, verbose = FALSE)
-            sobj <- RunHarmony(
-                object = sobj,
-                group.by.vars = batch_key,
-                assay.use = 'SCT',
-                max.iter.harmony=25,
-                project.dim = FALSE
-            )
-            sobj <- RunUMAP(sobj, reduction.use = "harmony", dims.use = 1:pca_n_comps)
-            pca_embedding = Embeddings(sobj, reduction = "pca")
-            harmony_embedding = Embeddings(sobj, reduction = "harmony")
-            umap_embedding = Embeddings(sobj, reduction = "umap")
-            ''')
+            harmonized <- HarmonyMatrix(dim_reduce, obs, vars_use=vars_to_correct, do_pca=FALSE, max.iter.harmony=max_iter_harmony)
+            harmonized <- data.frame(harmonized)
+        ''')
     
-    # Grab the embedding to use
-    pca_embedding = ro.globalenv["pca_embedding"]
-    harmony_embedding = ro.globalenv["harmony_embedding"]
-    umap_embedding = ro.globalenv["umap_embedding"]
-    adata.obsm["X_pca"] = pca_embedding
-    adata.obsm["X_harmonyR_pca"] = harmony_embedding
-    adata.obsm["X_umap"] = umap_embedding
+    # Get the corrected matrix
+    harmony_embedding_df = pd.DataFrame(ro.r['harmonized'], index=['PC{}'.format(i) for i in range(1,n_pcs+1)], columns=adata.obs.index).T
+
+    # Add the corrected matrix
+    adata.obsm[corrected_obsm_key] = harmony_embedding_df.loc[adata.obs.index].values
+
+
+def run_harmony(
+    adata: AnnData,
+    obsm_key: str = "X_pca",
+    corrected_obsm_key: str = "X_harmony",
+    vars_to_correct: List = ["sample"],
+    nclust: int = 100,
+    max_iter_harmony: int = 10,
+    random_state: int = 1234,
+):
+    from harmonypy import run_harmony
+    ho = run_harmony(
+        adata.obsm[obsm_key],
+        meta_data=adata.obs,
+        vars_use=vars_to_correct,
+        nclust=nclust,
+        max_iter_harmony=max_iter_harmony,
+        random_state=random_state,
+    )
+    adata.obsm[corrected_obsm_key] = ho.Z_corr.T
