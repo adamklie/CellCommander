@@ -143,6 +143,11 @@ def run_integrate(args: argparse.Namespace):
             plt.savefig(os.path.join(args.output_dir, f"{key_added}_{var_to_correct}_barplot.png"), bbox_inches='tight')
             plt.close()
 
+        # Save results in old adata object
+        adata.obsm[args.corrected_obsm_key] = adata_pp.obsm[args.corrected_obsm_key]
+        adata.obsm[args.corrected_obsm_key + "_umap"] = adata_pp.obsm["X_umap"]
+        adata.obs[f"{args.corrected_obsm_key}_leiden_{args.clust_resolution}"] = adata_pp.obs[f"{args.corrected_obsm_key}_leiden_{args.clust_resolution}"]
+
         # Save the adata
         logger.info(
             f"Saving integrated adata to {os.path.join(args.output_dir, f'{args.output_prefix}.h5ad')}"

@@ -74,10 +74,17 @@ def run_recipes(args: argparse.Namespace):
         # Check if user passed in RNA metadata
         if args.metadata_path is not None:
             logger.info(f"Reading metadata from {args.metadata_path}, should have bcs that match in first column")
+            if args.metadata_source is None:
+                args.metadata_source = os.path.basename(args.metadata_file).split(".")[
+                    0
+                ]
             if args.metadata_path.endswith(".csv"):
                 metadata = pd.read_csv(args.metadata_path, index_col=0)
             elif args.metadata_path.endswith(".tsv"):
                 metadata = pd.read_csv(args.metadata_path, sep="\t", index_col=0)
+            metadata.columns = [
+                c + "_" + args.metadata_source for c in metadata.columns
+            ]
         else:
             metadata = None
 

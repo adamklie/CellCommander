@@ -47,7 +47,7 @@ def run_soupx(
     # Highly variable genes
     logger.info(f"Selecting {clust_num_hvgs} highly variable genes with ScanPy default.")
     sc.pp.highly_variable_genes(adata_pp, n_top_genes=clust_num_hvgs)
-    adata_pp = adata_pp[:, adata_pp.var.highly_variable]
+    adata_pp = adata_pp[:, adata_pp.var.highly_variable].copy()
     
     # Dimensionality reduction
     logger.info(f"Running ScanPy dimensionality reduction with PCA "
@@ -66,7 +66,7 @@ def run_soupx(
         plt.close()
 
     # Add variables to original AnnData
-    adata.obs[f"pre_soupx_leiden_{clust_resolution}"] = adata_pp.obs[f"pre_soupx_leiden_{clust_resolution}"]
+    adata.obs[f"pre_soupx_leiden_{clust_resolution}"] = adata_pp.obs[f"pre_soupx_leiden_{clust_resolution}"].copy()
 
     # Import libraries
     logger.info("Importing SoupX library.")
@@ -158,9 +158,9 @@ def run_soupx(
 
     # Add in the new counts
     logger.info(f"Adding SoupX counts to AnnData, will be in '.X' and '{layer}' layers.")
-    adata.layers["counts"] = adata.X
+    adata.layers["counts"] = adata.X.copy()
     adata.layers[layer] = out_py.T
-    adata.X = adata.layers[layer]
+    adata.X = adata.layers[layer].copy()
 
     # Reprocess after SoupX
     logger.info("Reprocessing after SoupX to generate clustering and UMAP with ScanPy. Useful to compare to pre-SoupX.")
@@ -170,7 +170,7 @@ def run_soupx(
     sc.pp.normalize_total(adata_pp)
     sc.pp.log1p(adata_pp)
     sc.pp.highly_variable_genes(adata_pp, n_top_genes=clust_num_hvgs)
-    adata_pp = adata_pp[:, adata_pp.var.highly_variable]
+    adata_pp = adata_pp[:, adata_pp.var.highly_variable].copy()
     sc.pp.pca(adata_pp)
     sc.pp.neighbors(adata_pp, n_neighbors=clust_n_neighbors, n_pcs=clust_n_components, random_state=random_state)
     sc.tl.leiden(adata_pp, key_added=f"post_soupx_leiden_{clust_resolution}", resolution=clust_resolution, random_state=random_state)
