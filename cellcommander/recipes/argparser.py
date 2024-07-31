@@ -64,6 +64,18 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         "If not provided, no metadata will be used.",
     )
     subparser.add_argument(
+        "--metadata_source",
+        nargs=None,
+        type=str,
+        dest="metadata_source",
+        required=False,
+        default="external",
+        help="Name of the metadata source for the metadata file."
+        "This is used as the prefix for the column names "
+        "added to the adata.obs dataframe."
+        "If not provided, the source will be 'external'.",
+    )
+    subparser.add_argument(
         "--method",
         nargs=None,
         type=str,

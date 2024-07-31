@@ -82,6 +82,11 @@ def run_recipes(args: argparse.Namespace):
                 metadata = pd.read_csv(args.metadata_path, index_col=0)
             elif args.metadata_path.endswith(".tsv"):
                 metadata = pd.read_csv(args.metadata_path, sep="\t", index_col=0)
+            if args.sample_name is not None:
+                logger.info(f"Adding sample name {args.sample_name} to barcode index in metadata")
+                logger.info(f"Before: {metadata.index[0]}")
+                metadata.index = args.sample_name + "#" + metadata.index
+                logger.info(f"After: {metadata.index[0]}")
             metadata.columns = [
                 c + "_" + args.metadata_source for c in metadata.columns
             ]
