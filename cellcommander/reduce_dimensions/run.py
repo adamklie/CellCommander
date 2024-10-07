@@ -73,7 +73,7 @@ def run_reduce_dimensions(args: argparse.Namespace):
             # If layer is passed in, use that as the data
             if args.layer is not None:
                 logger.info(f"Setting .X to come from {args.layer} for Muon since it doesn't allow to pass in a layer")
-                adata_pp.X = adata_pp.layers[args.layer]
+                adata_pp.X = adata_pp.layers[args.layer].copy()
             
             # If obsm is passed in, use that as the data
             elif args.obsm_key is not None:
@@ -94,7 +94,7 @@ def run_reduce_dimensions(args: argparse.Namespace):
                 n_components = args.n_components
 
             # Final dimensionality reduction
-            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_lsi"]
+            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_lsi"].copy()
 
         elif "spectral" == args.method:
             # Handle variable features
@@ -124,7 +124,7 @@ def run_reduce_dimensions(args: argparse.Namespace):
             snap.tl.umap(adata_pp, use_rep="X_spectral", random_state=args.random_state)
 
             # Final dimensionality reduction
-            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_spectral"]
+            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_spectral"].copy()
 
         elif "scanpy_default" == args.method:
             logger.info("Using ScanPy to run PCA on the data")
@@ -139,7 +139,7 @@ def run_reduce_dimensions(args: argparse.Namespace):
             # If layer is passed in, use that as the data
             if args.layer is not None:
                 logger.info(f"Setting .X to come from {args.layer} and running PCA on that layer (ScanPy default)")
-                adata_pp.X = adata_pp.layers[args.layer]
+                adata_pp.X = adata_pp.layers[args.layer].copy()
                 run_scanpy_default(adata_pp, layer=args.layer, n_comps=args.n_components, random_state=args.random_state)
 
             elif args.obsm_key is not None:
@@ -159,7 +159,7 @@ def run_reduce_dimensions(args: argparse.Namespace):
                 n_components = args.n_components
 
             # Final dimensionality reduction
-            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_pca"]
+            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_pca"].copy()
 
         elif "seurat_default" == args.method:
             logger.info("Using Seurat to run PCA and UMAP on the data")
@@ -199,7 +199,7 @@ def run_reduce_dimensions(args: argparse.Namespace):
                 n_components = args.n_components - len(args.components_to_remove)
             else:
                 n_components = args.n_components
-            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_pca"]
+            adata_pp.obsm["X_reduced"] = adata_pp.obsm["X_pca"].copy()
             
         # Get neighborhood graph
         logger.info(f"Creating kNN graph using {args.n_neighbors} neighbors and {n_components} components of the reduced data")
@@ -220,9 +220,9 @@ def run_reduce_dimensions(args: argparse.Namespace):
             plt.close()
 
         # Save results in old adata object
-        adata.obsm[f"X_{args.method}"] = adata_pp.obsm["X_reduced"]
-        adata.obsm[f"X_{args.method}_umap"] = adata_pp.obsm["X_umap"]
-        adata.obs[key_added] = adata_pp.obs[key_added]
+        adata.obsm[f"X_{args.method}"] = adata_pp.obsm["X_reduced"].copy()
+        adata.obsm[f"X_{args.method}_umap"] = adata_pp.obsm["X_umap"].copy()
+        adata.obs[key_added] = adata_pp.obs[key_added].copy()
 
         # Save a TSV
         adata.obs.to_csv(os.path.join(args.output_dir, "cell_metadata.tsv"), sep="\t")

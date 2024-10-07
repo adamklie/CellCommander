@@ -74,10 +74,22 @@ def run_recipes(args: argparse.Namespace):
         # Check if user passed in RNA metadata
         if args.metadata_path is not None:
             logger.info(f"Reading metadata from {args.metadata_path}, should have bcs that match in first column")
+            if args.metadata_source is None:
+                args.metadata_source = os.path.basename(args.metadata_file).split(".")[
+                    0
+                ]
             if args.metadata_path.endswith(".csv"):
                 metadata = pd.read_csv(args.metadata_path, index_col=0)
             elif args.metadata_path.endswith(".tsv"):
                 metadata = pd.read_csv(args.metadata_path, sep="\t", index_col=0)
+            if args.sample_name is not None:
+                logger.info(f"Adding sample name {args.sample_name} to barcode index in metadata")
+                logger.info(f"Before: {metadata.index[0]}")
+                metadata.index = args.sample_name + "#" + metadata.index
+                logger.info(f"After: {metadata.index[0]}")
+            metadata.columns = [
+                c + "_" + args.metadata_source for c in metadata.columns
+            ]
         else:
             metadata = None
 
@@ -87,19 +99,20 @@ def run_recipes(args: argparse.Namespace):
                     frag_file=input_file,
                     outdir_path=args.output_dir,
                     sample_name=args.sample_name,
-                    bin_size=params["feature_selection"]["bin_size"],
-                    num_features=params["feature_selection"]["num_features"],
                     min_load_num_fragments=params["io"]["min_load_num_fragments"],
+                    sorted_by_barcode=params["io"]["sorted_by_barcode"],
+                    chunk_size=params["io"]["chunk_size"],
+                    save_intermediate=params["io"]["save_intermediate"],
                     min_tsse=params["qc"]["min_tsse"],
                     min_num_fragments=params["qc"]["min_num_fragments"],
                     max_num_fragments=params["qc"]["max_num_fragments"],
-                    sorted_by_barcode=params["io"]["sorted_by_barcode"],
-                    chunk_size=params["io"]["chunk_size"],
-                    clustering_resolution=params["analysis"]["clustering_resolution"],
-                    gene_activity=params["io"]["gene_activity"],
-                    metadata=metadata,
                     additional_doublets=params["qc"]["additional_doublets"],
-                    save_intermediate=params["io"]["save_intermediate"],
+                    metadata=metadata,
+                    bin_size=params["feature_selection"]["bin_size"],
+                    num_features=params["feature_selection"]["num_features"],
+                    blacklist_path=params["feature_selection"]["blacklist_path"],
+                    clustering_resolution=params["analysis"]["clustering_resolution"],
+                    gene_activity=params["analysis"]["gene_activity"],
                 )
             else:
                 raise NotImplementedError(f"Mode {args.mode} not implemented for tool {args.method}")

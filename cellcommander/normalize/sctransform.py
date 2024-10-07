@@ -74,6 +74,7 @@ def run_sctransform(
             sobj = CreateSeuratObject(counts = mtx, assay = "RNA", meta.data = metadata)
             vars_to_regress = unlist(vars_to_regress)
             sobj = SCTransform(sobj, verbose = FALSE, method = "glmGamPoi", vars.to.regress = vars_to_regress, seed.use = seed)
+            counts = GetAssayData(object = sobj, assay = "SCT", slot = "counts")
             data = GetAssayData(object = sobj, assay = "SCT", slot = "data")
             scale_data = GetAssayData(object = sobj, assay = "SCT", slot = "scale.data")
             variable_genes = VariableFeatures(object = sobj)

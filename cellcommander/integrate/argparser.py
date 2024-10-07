@@ -49,52 +49,23 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Prefix for output files. " "If not provided, the prefix will be 'reduce-dimensions'.",
     )
     subparser.add_argument(
-        "--batch-key",
+        "--batch_file",
         nargs=None,
         type=str,
-        dest="batch_key",
-        required=False,
-        default="sample",
-        help="Name of the key in the AnnData.obs to use for integration. ",
-    )
-    subparser.add_argument(
-        "--counts-key",
-        nargs=None,
-        type=str,
-        dest="counts_key",
+        dest="batch_file",
         required=False,
         default=None,
-        help="Key in the AnnData.layers that contains counts. "
-        "This is simply required if you use an R method that needs "
-        "to build a Seurat object."
-        "If not provided, will use AnnData.X which usually works fine"
-        "when operating on the dimensionality reduction."
+        help="File containing batch information for each barcode. "
+        "Expected format is a tab-separated file with the first column as the barcode and the remaining columns as batch information.",
     )
     subparser.add_argument(
-        "--data-key",
-        nargs=None,
+        "--vars_to_correct",
+        nargs="+",
         type=str,
-        dest="data_key",
+        dest="vars_to_correct",
         required=False,
         default=None,
-        help="Key in the AnnData.layers that contains data. "
-        "This is simply required if you use an R method that needs "
-        "to build a Seurat object."
-        "If not provided, will use AnnData.X which usually works fine "
-        "when operating on the dimensionality reduction."
-    )
-    subparser.add_argument(
-        "--scale-data-key",
-        nargs=None,
-        type=str,
-        dest="scale_data_key",
-        required=False,
-        default=None,
-        help="Key in the AnnData.layers that contains scaled data. "
-        "This is simply required if you use an R method that needs "
-        "to build a Seurat object."
-        "If not provided, will use AnnData.X which usually works fine "
-        "when operating on the dimensionality reduction."
+        help="Variables to correct for."
     )
     subparser.add_argument(
         "--obsm_key",
@@ -106,14 +77,41 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         help="Key in the AnnData.obsm to use as dimensionality reduction for correction."
     )
     subparser.add_argument(
-        "--correction-method",
+        "--components-to-remove",
+        nargs="+",
+        type=int,
+        dest="components_to_remove",
+        required=False,
+        default=None,
+        help="Number of components to remove from the dimensionality reduction. "
+        "This is often utilized for scATAC-seq data, where the first component is "
+        "can be correlated with the number of fragments. "
+    )
+    subparser.add_argument(
+        "--method",
         nargs=None,
         type=str,
-        dest="correction_method",
-        choices=["none", "harmonyR"],
+        dest="method",
+        choices=["harmony", "harmonyR"],
         required=False,
         default="none",
         help="Integration methods to use for analysis. "
+    )
+    subparser.add_argument(
+        "--corrected_obsm_key",
+        nargs=None,
+        type=str,
+        dest="corrected_obsm_key",
+        required=False,
+        default=None,
+        help="Key in the AnnData.obsm to store corrected dimensionality reduction."
+    )
+    subparser.add_argument(
+        "--max-iter-harmony",
+        type=int,
+        default=consts.DEFAULT_MAX_ITER_HARMONY,
+        dest="max_iter_harmony",
+        help="Maximum number of iterations to run harmony correction.",
     )
     subparser.add_argument(
         "--n-components",
@@ -142,15 +140,6 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         default=consts.DEFAULT_UMAP_MIN_DISTANCE,
         dest="umap_min_distance",
         help="Minimum distance for UMAP.",
-    )
-    subparser.add_argument(
-        "--plot-keys",
-        nargs="+",
-        type=str,
-        dest="plot_keys",
-        required=False,
-        default=None,
-        help="Additional keys to use for plots.",
     )
     subparser.add_argument(
         "--random-state",

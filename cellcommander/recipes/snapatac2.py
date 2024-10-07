@@ -8,26 +8,29 @@ import scanpy as sc
 import matplotlib.pyplot as plt
 import numpy as np
 
+from typing import Iterable, Optional, Tuple
 
 logger = logging.getLogger("cellcommander")
+
 
 def single_sample_recipe(
     frag_file: str,
     outdir_path: str,
     sample_name: str = None,
-    bin_size: int = 500,
-    num_features: int = 50000,
     min_load_num_fragments: int = 500,
+    sorted_by_barcode: bool = True,
+    chunk_size: int = 2000,
+    save_intermediate: bool = False,
     min_tsse: int = 4,
     min_num_fragments: int = 1000,
     max_num_fragments: int = None,
-    sorted_by_barcode: bool = True,
-    chunk_size: int = 2000,
+    additional_doublets: str = None,
+    metadata: pd.DataFrame = None,
+    bin_size: int = 500,
+    num_features: int = 50000,
+    blacklist_path=None,
     clustering_resolution: float = 1.0,
     gene_activity: bool = True,
-    metadata: pd.DataFrame = None,
-    additional_doublets: str = None,
-    save_intermediate: bool = False,
 ):
 
     # Log snapATAC version
@@ -80,7 +83,7 @@ def single_sample_recipe(
 
     # Select the top accessible features
     logger.info(f"Selecting the top {num_features} accessible features")
-    snap.pp.select_features(adata, n_features=num_features)
+    snap.pp.select_features(adata, n_features=num_features, blacklist=blacklist_path)
 
     # Run scrublet
     logger.info("Running scrublet")
@@ -170,3 +173,154 @@ def single_sample_recipe(
         # Save the gene matrix
         logger.info("Saving gene activity matrix")
         gene_matrix.write(os.path.join(outdir_path, f"gene_matrix.h5ad"))
+
+
+def integrate_recipe(
+    input_h5ad_paths: list,
+    sample_ids: list,
+    outdir_path: str,
+    output_prefix: Optional[str] = "integrated",
+    annotation_key: Optional[str] = None,
+    barcodes_path: Optional[str] = None,
+    n_features: int = 50000,
+    clustering_resolution: float = 1.0,
+    make_gene_matrix: bool = False,
+    filter_genes: int = 3,
+):
+    # Log snapATAC version
+    logger.info(f"Running standard integration workflow with snapATAC version {snap.__version__}")
+
+    # If sample ids are not provided, use the file names
+    if sample_ids is None:
+        logger.info("Sample ids not provided. Using file names.")
+        sample_ids = [os.path.basename(file).split(".")[0] for file in input_h5ad_paths]
+    
+    # Read in each h5ad with scanpy delete the X_spectral and X_umap from the obsm of the AnnData and resave with new name
+    logger.info("Deleting X_spectral and X_umap from obsm of AnnData and resaving.")
+    cell_bcs = []
+    cell_ids = []
+    for path in input_h5ad_paths:
+        adata = sc.read_h5ad(path)
+        del adata.obsm["X_spectral"]
+        del adata.obsm["X_umap"]
+        adata.write_h5ad(path.replace(".h5ad", "_obsm_delete.h5ad"))
+        if annotation_key is not None:
+            cell_ids.extend(adata.obs[annotation_key].tolist())
+            cell_bcs.extend(adata.obs_names.tolist())
+    if annotation_key:
+        cell_id_map = pd.Series(cell_ids, index=cell_bcs)
+
+    # Update the input h5ad paths to the new ones
+    input_h5ad_paths = [file.replace(".h5ad", "_obsm_delete.h5ad") for file in input_h5ad_paths]
+    logger.info(f"Updated input h5ad paths: {input_h5ad_paths}")
+    
+    # Read in barcodes file if provided
+    if barcodes_path is not None:
+        logger.info(f"Reading in barcodes file from {barcodes_path}")
+        if barcodes_path.endswith(".csv"):
+            barcodes = pd.read_csv(barcodes_path, header=None, index_col=0)
+        elif barcodes_path.endswith(".tsv") | barcodes_path.endswith(".txt"):
+            barcodes = pd.read_csv(barcodes_path, header=None, index_col=0, sep="\t")
+        else:
+            raise ValueError("Barcodes file must be a .csv or .tsv file.")
+        barcodes = barcodes.index.tolist()
+        logger.info(f"Barcodes file read in with {len(barcodes)} barcodes.")
+        logger.info(f"First few barcodes: {barcodes[:5]}")
+
+    # Create the AnnDataset
+    adata_atac_merged_list = []
+    for _, h5ad_file in enumerate(input_h5ad_paths):
+        adata_atac = snap.read(h5ad_file)
+        if barcodes_path is not None:
+            logger.info(f"Subsetting AnnDataset to barcodes in {barcodes_path}")
+            adata_atac.subset(obs_indices=np.where(pd.Index(adata_atac.obs_names).isin(barcodes))[0])
+            logger.info(f"Number of cells after filtering: {adata_atac.shape[0]}")
+        adata_atac_merged_list.append(adata_atac)
+    adatas = [(name, adata) for name, adata in zip(sample_ids, adata_atac_merged_list)]
+
+    # Merge into one object
+    logger.info(f"Creating AnnDataset from {adatas} samples.")
+    adata_atac_merged = snap.AnnDataSet(
+        adatas=adatas,
+        filename=os.path.join(outdir_path, f"{output_prefix}.h5ads")
+    )
+    logger.info(f"AnnDataset created at {os.path.join(outdir_path, f'{output_prefix}.h5ads')}")
+
+    # Close all the backed anndatas
+    logger.info("Closing all the backed anndatas.")
+    for adata_atac in adata_atac_merged_list:
+        adata_atac.close()
+    adata_atac_merged.close()
+
+    # Read in the merged AnnDataset
+    adata_atac_merged = snap.read_dataset(os.path.join(outdir_path, f"{output_prefix}.h5ads"))
+    if annotation_key is not None:
+        logger.info(f"First few merged adata cell ids: {adata_atac_merged.obs_names[:5]}")
+        logger.info(f"First few cell id map entries: {cell_id_map.index[:5]}")
+        mapped_cell_ids = cell_id_map[adata_atac_merged.obs_names].values.tolist()
+        adata_atac_merged.obs[annotation_key] = mapped_cell_ids
+    
+    # Select features on the merged dataset
+    logger.info(f"Selecting {n_features} features.")
+    snap.pp.select_features(adata_atac_merged, n_features=n_features)
+
+    # Spectral embedding
+    logger.info("Performing spectral embedding")
+    snap.tl.spectral(adata_atac_merged)
+
+    # Run UMAP
+    logger.info("Running UMAP")
+    snap.tl.umap(adata_atac_merged, use_dims=list(range(1, adata_atac_merged.obsm["X_spectral"].shape[1])))
+
+    # Clustering
+    logger.info("Performing clustering")
+    snap.pp.knn(adata_atac_merged, use_rep="X_spectral", use_dims=list(range(1, adata_atac_merged.obsm["X_spectral"].shape[1])))
+    snap.tl.leiden(adata_atac_merged, resolution=clustering_resolution, key_added=f"leiden_{clustering_resolution}")
+
+    if make_gene_matrix:
+
+        # Create gene matrix
+        logger.info("Creating gene matrix")
+        gene_matrix = snap.pp.make_gene_matrix(
+            adata=adata_atac_merged,
+            gene_anno=snap.genome.hg38
+        )
+
+        # Clean up the gene matrix
+        sc.pp.filter_genes(gene_matrix, min_cells=filter_genes)
+        sc.pp.normalize_total(gene_matrix)
+        sc.pp.log1p(gene_matrix)
+        
+        # Perform imputation with MAGIC
+        logger.info("Performing MAGIC imputation")
+        sc.external.pp.magic(gene_matrix, solver="approximate")
+
+        # Copy over UMAP embedding
+        gene_matrix.obsm["X_umap"] = adata_atac_merged.obsm["X_umap"]
+
+        # Write the gene matrix
+        logger.info("Writing gene matrix")
+        gene_matrix.write(os.path.join(outdir_path, f"{output_prefix}_gene_matrix.h5ad"))
+
+    # Turn into in memory AnnData
+    logger.info("Turning into in memory AnnData")
+    adata_mem = adata_atac_merged.to_adata()
+
+    # Plot first spectral embedding against log_n_fragment
+    with plt.rc_context({"figure.figsize": (5, 5)}):
+        sc.pl.embedding(adata=adata_mem, basis="X_spectral", color="log_n_fragment", show=False)
+        plt.savefig(os.path.join(outdir_path, "spectral_embedding.png"))
+        plt.close()
+        
+    # Plot the UMAP with clusters
+    logger.info("Plotting UMAP with clusters")
+    with plt.rc_context({"figure.figsize": (5, 5)}):
+        sc.pl.umap(adata_mem, color=["log_n_fragment", "tsse", "sample" f"leiden_{clustering_resolution}"], show=False, ncols=2)
+        plt.savefig(os.path.join(outdir_path, "umap.png"))
+        plt.close()
+
+    # Close the file
+    adata_atac_merged.close()
+
+    # Print completion message
+    logger.info("Successfully completed integration of SnapATAC2 samples.")

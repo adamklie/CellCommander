@@ -50,6 +50,16 @@ def add_subparser_args(subparsers: argparse) -> argparse:
         default="detect_doublets",
         help="Prefix for output files. " "If not provided, the prefix will be 'detect_doublets'.",
     )
+    # Argument for reading h5 files that are not gene expression, should be true when set but false by default
+    subparser.add_argument(
+        "--not-gex",
+        action="store_true",
+        dest="not_gex",
+        required=False,
+        default=False,
+        help="Only needed if trying to read in an h5 file that is not gene expression data. "
+        "By default, the data will be assumed to be gene expression data. ",
+    )
     subparser.add_argument(
         "--method",
         nargs=None,

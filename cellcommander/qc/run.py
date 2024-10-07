@@ -164,6 +164,8 @@ def run_qc(args: argparse.Namespace):
                 pct_counts_in_top_genes_nmads=args.pct_counts_in_top_features_nmads,
                 pct_counts_mt_nmads=args.pct_counts_mt_nmads,
                 pct_counts_mt_hi=args.pct_counts_mt_hi,
+                pct_counts_ribo_hi=args.pct_counts_ribo_hi,
+                pct_counts_ribo_nmads=args.pct_counts_ribo_nmads,
                 n_genes_hi=args.n_features_hi,
                 n_genes_low=args.n_features_low,
             )
